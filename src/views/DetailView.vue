@@ -1,33 +1,76 @@
 <script setup lang="ts">
 import itemIcon from '../assets/images/home-tip-icon.png'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import * as echarts from 'echarts'
-let timer: number
-const dateTime = ref('')
-const dateWeekday = ref('')
-const dateDay = ref('')
+import { RangePicker } from 'ant-design-vue'
+import dayjs from 'dayjs';
+import { useStore } from '../stores'
+import { Spin } from 'ant-design-vue'
+import type { Dayjs } from 'dayjs'
+import { request } from '../apis/index'
+import { getDeviceData, getDeviceEchartsData } from '@/apis';
+type RangeValue = [Dayjs, Dayjs];
+
+const store = useStore()
+const dateRange = ref<RangeValue>()
 const echartsRef = ref<HTMLDivElement | null>(null)
 let echartInstance: echarts.ECharts | null = null
 
-function calcDate() {
-  const date = new Date()
-  const hour = `${date.getHours()}`.padStart(2, '0')
-  const minute = `${date.getMinutes()}`.padStart(2, '0')
-  const second = `${date.getSeconds()}`.padStart(2, '0')
-  const weekday = date.toLocaleDateString('zh-CN', {
-    weekday: 'long'
-  })
+const dayList = [{
+  id: 'week',
+  label: '近7天',
+}, {
+  id: 'month',
+  label: '近30天'
+}, {
+  id: 'quarter',
+  label: '近90天'
+}, {
+  id: 'custom',
+  label: '自定义',
+}]
+
+const tagList = ref([{
+  label: '加速度',
+  id: 1,
+  includes: ['bearing1', 'bearing2', 'motor', 'flywheel', 'fan1', 'fan2']
+}, {
+  label: '速度',
+  id: 2,
+  includes: ['bearing1', 'bearing2', 'motor', 'flywheel', 'fan1', 'fan2']
+}, {
+  label: '位移',
+  id: 3,
+  includes: ['bearing1', 'bearing2', 'motor', 'flywheel', 'fan1', 'fan2']
+}, {
+  label: '温度',
+  includes: ['bearing1', 'bearing2', 'motor', 'flywheel', 'fan1', 'fan2', 'dryingOven', 'expender'],
+  id: 4,
+}, {
+  label: '真空度1',
+  includes: ['leak'],
+  id: 5,
+}])
+
+const currentSelectDayId = ref(dayList[0].id)
+
+const currentId = ref(store.monitorDevices[0].id)
+
+const isLoading = ref(true)
+const currentFeatureId = ref(1)
+
+const currentItem = computed(() => store.monitorDevices.find(item => item.id === currentId.value))
+
+function dealData(dateStr: string) {
+  const date = new Date(dateStr);
   const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
-  dateDay.value = `${year}.${month}.${day}`
-  // const day = date.toLocaleDateString('zh-CN', {
-  //   month: 'long',
-  //   day: 'numeric'
-  // })
-  dateTime.value = `${hour}:${minute}:${second}`
-  // dateDay.value = `${day}`
-  dateWeekday.value = `${weekday}`
+  const hour = `${date.getHours()}`.padStart(2, '0')
+  const minute = `${date.getMinutes()}`.padStart(2, '0')
+  const second = `${date.getSeconds()}`.padStart(2, '0')
+
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
 }
 
 function initChart() {
@@ -35,18 +78,36 @@ function initChart() {
     return
   }
   echartInstance = echarts.init(echartsRef.value)
-  echartInstance.on('datazoom', () => {
+  echartInstance.on('datazoom', (e) => {
+    // console.log(e)
     echartInstance?.dispatchAction({
       type: "takeGlobalCursor",
       key: "dataZoomSelect",
-      dataZoomSelectActive: !1
+      dataZoomSelectActive: true
     })
   });
 
   echartInstance.setOption({
     color: ["#409EFF"],
+    // title: {
+    //   show: true,
+    //   text: '加速度 | 特征值',
+    //   textStyle: {
+    //     color: '#FFF',
+    //     fontSize: 14,
+    //   }
+    // },
+    legend: {
+      show: true,
+      top: 0,
+      left: "40%",
+      // icon: 'none',
+      textStyle: {
+        color: '#fff'
+      }
+    },
     toolbox: {
-      show: !1,
+      show: false,
       height: 0,
       top: 5,
       right: 60,
@@ -67,36 +128,36 @@ function initChart() {
     },
     dataZoom: [{
       type: "inside",
-      show: !0
+      show: true
     }],
     tooltip: {
       trigger: "axis",
       axisPointer: {
         type: "cross"
       },
-      showContent: !0
+      // showContent: !0
     },
     xAxis: [{
       type: "category",
-      interval: 300,
-      min: 0,
-      max: 16384,
       axisTick: {
-        alignWithLabel: !0,
+        alignWithLabel: true,
         lineStyle: {
           color: "#8291A9"
         },
-        interval: 100
       },
       axisLabel: {
-        color: "#8291A9",
-        textStyle: {
-          fontSize: 14,
-          fontFamily: "PingFangSC"
-        }
+        interval: 'auto',
+        // width: 80,
+        rotate: 0,
+        margin: 10,
+        overflow: 'truncate',
+        color: '#fff', //"#8291A9",
+        fontSize: 12,
+        showMinLabel: true,
+        fontFamily: "PingFangSC"
       },
       axisLine: {
-        show: !0,
+        show: true,
         lineStyle: {
           color: "rgba(130, 145, 169, 0.25)"
         }
@@ -111,9 +172,9 @@ function initChart() {
           color: "#F56C6C"
         },
         label: {
-          formatter: function (t: any) {
-            return t.seriesData[0].data ? "[x]" + t.value : null
-          },
+          // formatter: function (t: any) {
+          //   return t.seriesData[0].data ? "[x]" + t.value : null
+          // },
           padding: [5, 14],
           margin: 0,
           backgroundColor: "#409EFF"
@@ -122,6 +183,7 @@ function initChart() {
     }],
     yAxis: {
       type: "value",
+      min: 0,
       boundaryGap: ["20%", "20%"],
       splitLine: {
         lineStyle: {
@@ -129,18 +191,16 @@ function initChart() {
         }
       },
       axisLine: {
-        show: !0,
+        show: true,
         lineStyle: {
           color: "rgba(130, 145, 169, 0.25)"
         }
       },
       axisLabel: {
-        inside: !0,
-        color: "#8291A9",
-        textStyle: {
-          fontSize: 14,
-          fontFamily: "PingFangSC"
-        }
+        inside: false,
+        color: '#fff',  //"#8291A9",
+        fontSize: 14,
+        fontFamily: "PingFangSC"
       },
       axisPointer: {
         lineStyle: {
@@ -151,18 +211,68 @@ function initChart() {
         }
       },
       axisTick: {
-        inside: !0
+        inside: true
       }
     },
     grid: {
-      top: 20,
+      top: 40,
       bottom: 0,
       left: 0,
       right: 0,
       containLabel: !0
     },
-    series: [{
+    // series: [{
+    //   type: "line",
+    //   name: '加速度',
+    //   symbol: "none",
+    //   itemStyle: {
+    //     color: "#F56C6C"
+    //   },
+    //   xAxisIndex: 0,
+    //   lineStyle: {
+    //     width: 1,
+    //     color: "#409EFF"
+    //   },
+    //   label: {
+    //     show: false
+    //   },
+    //   markLine: {
+    //     symbol: "circle",
+    //     label: {
+    //       position: "end",
+    //       formatter: function (t: any) {
+    //         var e = t.name;
+    //         return "" !== e && t.dataIndex,
+    //           e
+    //       },
+    //       fontSize: 14,
+    //       fontFamily: "PingFangSC",
+    //       color: "#ffffff"
+    //     },
+    //     data: []
+    //   }
+    // }]
+  })
+
+  // window.echartInstance = echartInstance
+}
+
+function loadChartData(splitNumber: number, data: {
+  dataX: number[],
+  dataY: number[]
+}, min?: number, max?: number) {
+  if (min !== undefined && max !== undefined) {
+    const chartMin = (min - min / 4).toFixed(3);
+    const chartMax = (max + max / 10).toFixed(3);
+    console.log("min:" + min + ";max:" + max + ";chartMin:" + chartMin + ";chartMax:" + chartMax);
+  }
+
+
+  if (echartInstance) {
+    const options = echartInstance.getOption();
+    const seriesOptions = {
       type: "line",
+      name: '加速度',
       symbol: "none",
       itemStyle: {
         color: "#F56C6C"
@@ -172,97 +282,846 @@ function initChart() {
         width: 1,
         color: "#409EFF"
       },
+      label: {
+        show: false
+      },
       markLine: {
         symbol: "circle",
         label: {
-          normal: {
+          position: "end",
+          formatter: function (t: any) {
+            var e = t.name;
+            return "" !== e && t.dataIndex,
+              e
+          },
+          fontSize: 14,
+          fontFamily: "PingFangSC",
+          color: "#ffffff"
+        },
+        data: []
+      },
+      data: data.dataY
+    };
+    (options.xAxis as any)[0].splitNumber = splitNumber;
+    (options.xAxis as any)[0].data = data.dataX;
+    // (options.series as any)[0].data = data.dataY;
+    // (options.series as any)[0].markLine.data = [];
+    options.series = [seriesOptions]
+    echartInstance.clear();
+    echartInstance.setOption(options);
+  }
+}
+
+function download() {
+  if (echartInstance) {
+    const option = echartInstance.getOption() as any;
+    const deviceName = currentItem.value?.label
+    const featureName = tagList.value.find(item => item.id === currentFeatureId.value)?.label
+    const title = option.title?.text ?? featureName;
+    let dataStr = `${deviceName}${title}\n`;
+    // console.log(deviceName);
+    // return
+    dataStr += "时间,";
+    option.series.forEach((seriesItem: any) => {
+      dataStr += `,${seriesItem.name}`
+    })
+    dataStr += "\n";
+    option.xAxis[0].data?.forEach((item: any, index: number) => {
+      dataStr += `${item}`
+      option.series.forEach((seriesItem: any) => {
+        dataStr += `,${seriesItem.data[index]}`
+      })
+      dataStr += '\n'
+    })
+    const buffer = new Blob(["\ufeff" + dataStr], {
+      type: "test/csv;charset=utf-8"
+    });
+    console.log(dataStr);
+    const url = window.URL.createObjectURL(buffer);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${deviceName}${title}.csv`;
+    // const a.href = url;
+    a.download = currentItem.value?.label + ".csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+}
+
+function translateFeatureId() {
+  switch (currentFeatureId.value) {
+    case 1:
+      return 'a'
+    case 2:
+      return 'v'
+
+    case 3:
+      return 's'
+    case 4:
+      return 't'
+
+    case 5:
+      return 'p'
+
+    default:
+      return ''
+  }
+}
+
+function translateFeatureUnit() {
+  switch (currentFeatureId.value) {
+    case 1:
+      return 'm/s2'
+    case 2:
+      return 'm/s'
+    case 3:
+      return 'um'
+    case 4:
+      return '℃'
+    case 5:
+      return 'Torr'
+
+
+    default:
+      return ''
+  }
+}
+
+async function loadEchartData() {
+  if (!dateRange.value || !echartInstance) return
+  const featureName = tagList.value.find(item => item.id === currentFeatureId.value)?.label
+  const feature = translateFeatureId()
+  const unit = translateFeatureUnit()
+  const options = echartInstance.getOption() as any;
+
+  isLoading.value = true
+
+  try {
+    // 针对真空度的处理
+    if (currentId.value === 'leak') {
+      const [one, two] = await Promise.all([
+        request.get(`/sensor/Nfill1_${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        }),
+        request.get(`/sensor/Nfill1_x${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        })
+      ])
+
+      const xData = one.data.data
+      const yData = two.data.data
+
+      const timeData = xData.map((item: any,) => {
+        const x = item[0]
+        return dayjs(x * 1000).format('YYYY-MM-DD HH:mm:ss')
+      })
+
+      options.xAxis[0].splitNumber = 1;
+
+      options.title = {
+        show: true,
+        text: `${featureName} | 特征值`,
+        textStyle: {
+          color: '#FFF',
+          fontSize: 14,
+        }
+      }
+      options.xAxis[0].data = timeData;
+      options.series = [{
+        type: "line",
+        name: `${featureName}1#(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#00A0E9"
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#00A0E9"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
             position: "end",
             formatter: function (t: any) {
               var e = t.name;
               return "" !== e && t.dataIndex,
                 e
             },
-            textStyle: {
-              fontSize: 14,
-              fontFamily: "PingFangSC",
-              color: "#ffffff"
-            }
-          }
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
         },
-        data: []
-      }
-    }]
-  })
+        data: xData.map((item: number[]) => item[1])
+      }, {
+        type: "line",
+        name: `${featureName}2#(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#E60012",
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#E60012"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: yData.map((item: number[]) => item[1])
+      }];
+      echartInstance.clear();
+      echartInstance.setOption(options);
 
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: 10800 / timeData.length > 1 ? 100 : 10800 / timeData.length
+      })
+
+      return
+    }
+    // 针对Expender （℃）的处理
+    if (currentId.value === 'expender') {
+      const [one, two] = await Promise.all([
+        request.get(`/sensor/oil1_${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        }),
+        request.get(`/sensor/oil2_x${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        })
+      ])
+      const xData = one.data.data
+      const yData = two.data.data
+
+      const timeData = xData.map((item: any,) => {
+        const x = item[0]
+        return dayjs(x * 1000).format('YYYY-MM-DD HH:mm:ss')
+      })
+
+      options.xAxis[0].splitNumber = 1;
+
+      options.title = {
+        show: true,
+        text: `${featureName} | 特征值`,
+        textStyle: {
+          color: '#FFF',
+          fontSize: 14,
+        }
+      }
+      options.xAxis[0].data = timeData;
+      options.series = [{
+        type: "line",
+        name: `液压油温(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#00A0E9"
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#00A0E9"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: xData.map((item: number[]) => item[1])
+      }, {
+        type: "line",
+        name: `电机温度(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#E60012",
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#E60012"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: yData.map((item: number[]) => item[1])
+      }];
+      echartInstance.clear();
+      echartInstance.setOption(options);
+
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: 10800 / timeData.length > 1 ? 100 : 10800 / timeData.length
+      })
+      return
+    }
+    // 针对干燥炉温度的处理
+    if (currentId.value === 'dryingOven') {
+      const [one] = await Promise.all([
+        request.get(`/sensor/dryer_${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        }),
+      ])
+      const xData = one.data.data;
+      const timeData = xData.map((item: any,) => {
+        const x = item[0]
+        return dayjs(x * 1000).format('YYYY-MM-DD HH:mm:ss')
+      })
+      options.xAxis[0].splitNumber = 1;
+
+      options.title = {
+        show: true,
+        text: `${featureName} | 特征值`,
+        textStyle: {
+          color: '#FFF',
+          fontSize: 14,
+        }
+      }
+      options.xAxis[0].data = timeData;
+      options.series = [{
+        type: "line",
+        name: `干燥炉温度(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#00A0E9"
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#00A0E9"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: xData.map((item: number[]) => item[1])
+      }];
+      echartInstance.clear();
+      echartInstance.setOption(options);
+
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: 10800 / timeData.length > 1 ? 100 : 10800 / timeData.length
+      })
+      return
+    }
+    // 其他的处理
+    if (currentFeatureId.value !== 4) {
+      const [x, y, z] = await Promise.all([
+        request.get(`/sensor/${currentId.value}_x${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        }),
+        request.get(`/sensor/${currentId.value}_y${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        }),
+        request.get(`/sensor/${currentId.value}_z${feature}`, {
+          params: {
+            start: dateRange.value?.[0].valueOf() / 1000,
+            end: dateRange.value?.[1].valueOf() / 1000,
+          }
+        })
+      ])
+      const xData = x.data.data
+      const yData = y.data.data
+      const zData = z.data.data
+      // const xData = (await request.get(`/sensor/${currentId.value}_x${feature}`, {
+      //   params: {
+      //     start: dateRange.value?.[0].valueOf() / 1000,
+      //     end: dateRange.value?.[1].valueOf() / 1000,
+      //   }
+      // })).data.data
+      // const yData = (await request.get(`/sensor/${currentId.value}_y${feature}`, {
+      //   params: {
+      //     start: dateRange.value?.[0].valueOf() / 1000,
+      //     end: dateRange.value?.[1].valueOf() / 1000,
+      //   }
+      // })).data.data
+      // const zData = (await request.get(`/sensor/${currentId.value}_z${feature}`, {
+      //   params: {
+      //     start: dateRange.value?.[0].valueOf() / 1000,
+      //     end: dateRange.value?.[1].valueOf() / 1000,
+      //   }
+      // })).data.data
+
+      const timeData = xData.map((item: any, index: number) => {
+        const x = item[0]
+        const y = yData[index][0]
+        const z = zData[index][0]
+
+        return dayjs((x + y + z) / 3 * 1000).format('YYYY-MM-DD HH:mm:ss')
+      })
+
+      options.xAxis[0].splitNumber = 1;
+      options.title = {
+        show: true,
+        text: `${featureName} | 特征值`,
+        textStyle: {
+          color: '#FFF',
+          fontSize: 14,
+        }
+      }
+      options.xAxis[0].data = timeData;
+      options.series = [{
+        type: "line",
+        name: `X轴-${featureName}(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#00A0E9"
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#00A0E9"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: xData.map((item: number[]) => item[1])
+      }, {
+        type: "line",
+        name: `Y轴-${featureName}(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#E60012",
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#E60012"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: yData.map((item: number[]) => item[1])
+      }, {
+        type: "line",
+        name: `Z轴-${featureName}(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#00FF00",
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#00FF00"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: zData.map((item: number[]) => item[1])
+      }];
+      echartInstance.clear();
+      echartInstance.setOption(options);
+
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: 10800 / timeData.length > 1 ? 100 : 10800 / timeData.length
+      })
+    } else {
+      const tData = (await request.get(`/sensor/${currentId.value}_${feature}`, {
+        params: {
+          start: dateRange.value?.[0].valueOf() / 1000,
+          end: dateRange.value?.[0].add(1, 'day').valueOf() / 1000,
+        }
+      })).data.data;
+      const timeData = tData.map((item: any,) => {
+        return dayjs(item[0] * 1000).format('YYYY-MM-DD HH:mm:ss')
+      })
+      options.title = {
+        show: true,
+        text: `${featureName} | 特征值`,
+        textStyle: {
+          color: '#FFF',
+          fontSize: 14,
+        }
+      }
+      options.xAxis[0].splitNumber = 1;
+      options.xAxis[0].data = timeData;
+      options.series = [{
+        type: "line",
+        name: `${featureName}(${unit})`,
+        symbol: "none",
+        itemStyle: {
+          color: "#00A0E9"
+        },
+        xAxisIndex: 0,
+        lineStyle: {
+          width: 1,
+          color: "#00A0E9"
+        },
+        label: {
+          show: false
+        },
+        markLine: {
+          symbol: "circle",
+          label: {
+            position: "end",
+            formatter: function (t: any) {
+              var e = t.name;
+              return "" !== e && t.dataIndex,
+                e
+            },
+            fontSize: 14,
+            fontFamily: "PingFangSC",
+            color: "#ffffff"
+          },
+          data: []
+        },
+        data: tData.map((item: any) => item[1])
+      }]
+      echartInstance.clear();
+      echartInstance.setOption(options);
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: 10800 / timeData.length > 1 ? 100 : 10800 / timeData.length
+      })
+    }
+
+  } catch (error) {
+    error
+  } finally {
+    isLoading.value = false;
+  }
 }
 
-function loadChartData(splitNumber: number, data: {
-  dataX: number[],
-  dataY: number[]
-}, min: number, max: number) {
-  const chartData = {
-    splitNumber,
-    dataX: data.dataX,
-    dataY: data.dataY,
-    min,
-    max,
-  }
 
-  const chartMin = (min - min / 4).toFixed(3);
-  const chartMax = (max + max / 10).toFixed(3);
-  console.log("min:" + min + ";max:" + max + ";chartMin:" + chartMin + ";chartMax:" + chartMax);
+async function loadWaveChart() {
+  if (!dateRange.value) return
+
+  const data = await getDeviceEchartsData(currentId.value, {
+    start: dateRange.value?.[0].valueOf(),
+    end: dateRange.value?.[1].valueOf(),
+  })
+
+  console.log(data);
+
+  const dataX = data.data.map((item: any, index: any) => {
+    const now = dayjs();
+    const time = now.add(index, 'day');
+    return time.format('YYYY-MM-DD HH:MM')
+  });
 
   if (echartInstance) {
     const options = echartInstance.getOption();
-    (options.xAxis as any)[0].splitNumber = splitNumber;
-    (options.xAxis as any)[0].data = data.dataX;
-    (options.xAxis as any)[0].max = data.dataX.length;
-    (options.yAxis as any)[0].min = min;
-    (options.yAxis as any)[0].max = chartMax;
-    (options.series as any)[0].data = data.dataY;
-    (options.series as any)[0].markLine.data = [];
+    (options.xAxis as any)[0].splitNumber = 1;
+    (options.xAxis as any)[0].data = dataX;
+    options.series = [{
+      type: "line",
+      name: 'X轴加速度',
+      symbol: "none",
+      itemStyle: {
+        color: "#00A0E9"
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: "#00A0E9"
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: "circle",
+        label: {
+          position: "end",
+          formatter: function (t: any) {
+            var e = t.name;
+            return "" !== e && t.dataIndex,
+              e
+          },
+          fontSize: 14,
+          fontFamily: "PingFangSC",
+          color: "#ffffff"
+        },
+        data: []
+      },
+      data: data.data
+    }, {
+      type: "line",
+      name: 'Y轴加速度',
+      symbol: "none",
+      itemStyle: {
+        color: "#E60012",
+        // show: false,
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: "#E60012"
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: "circle",
+        label: {
+          position: "end",
+          formatter: function (t: any) {
+            var e = t.name;
+            return "" !== e && t.dataIndex,
+              e
+          },
+          fontSize: 14,
+          fontFamily: "PingFangSC",
+          color: "#ffffff"
+        },
+        data: []
+      },
+      data: data.data.map((item: any) => item + Math.random() * 10)
+    }, {
+      type: "line",
+      name: 'Z轴加速度',
+      symbol: "none",
+      itemStyle: {
+        color: "#00FF00",
+        // show: false,
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: "#00FF00"
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: "circle",
+        label: {
+          position: "end",
+          formatter: function (t: any) {
+            var e = t.name;
+            return "" !== e && t.dataIndex,
+              e
+          },
+          fontSize: 14,
+          fontFamily: "PingFangSC",
+          color: "#ffffff"
+        },
+        data: []
+      },
+      data: data.data.map((item: any) => item + Math.random() * 10)
+    }];
+    // (options.series as any)[0].markLine.data = [];
     echartInstance.clear();
     echartInstance.setOption(options);
   }
 }
 
-// function computeYMax(t, e: number, s: number, a: number) {
-//   var i = 1.3 * e;
-//   return 0 === e ? i = a || 1 : e < 0 ? i = 0 : e > 0 && (i = e + e * s,
-//     i < a && (i = a || 1)),
-//     Math.ceil(i)
-// }
+watch(currentId, () => {
+  currentFeatureId.value = tagList.value.filter(item => item.includes.includes(currentId.value))[0].id
+})
 
-async function loadWaveChart() {
-  const res = await fetch(`/api/chanel/getWave?sn=11001.192.168.0.101.1&chanel=0&overall=acc&time=2024-02-21T12:14:19.942Z`, {
-    method: 'GET',
-    headers: {
-      'content-type': 'application/json',
-      'authorization': 'Bearer ' + 'eyJhbGciOiJIUzUxMiJ9.eyJleHAiOjE3MTAzMzU1NTEsInN1YiI6IjMzNSIsInJvbGUiOlsiMSJdfQ.Ja1kMqOHfBqesSKQ_s0F07sm_JUUtPEYJOlAjOv-J9XRi44pOfETOORquMGmczeVOd-YJ1IrHtQEAERT8VNPEQ'
+watch(() => ({
+  range: dateRange.value,
+  deviceId: currentId.value,
+  feature: currentFeatureId.value
+}), async ({ range, deviceId }) => {
+  if (deviceId)
+    if (range) {
+      await loadEchartData()
+      // await loadWaveChart()
     }
-  });
+})
 
-  const data = await res.json();
 
-  console.log(data);
+watch(() => {
+  return {
+    dataId: currentSelectDayId.value
+  }
+}, async ({ dataId }) => {
+  const startDate = dayjs()
+  switch (dataId) {
+    case 'week':
+      dateRange.value = [startDate.subtract(7, 'day'), startDate]
+      break;
+    case 'month':
+      dateRange.value = [startDate.subtract(30, 'day'), startDate]
+      break
+    case 'quarter':
+      dateRange.value = [startDate.subtract(90, 'day'), startDate]
+      break
+    default:
+      dateRange.value = undefined
+      break;
+  }
+})
 
-  loadChartData(8, { dataX: data.data.datax ?? [], dataY: data.data.datay ?? [] }, data.data.min, data.data.max);
+
+
+function onMonitorDeviceClick(id: string) {
+  currentId.value = id
 }
 
 onMounted(async () => {
-  calcDate()
 
-  timer = window.setInterval(() => {
-    calcDate()
-  }, 1000)
+  isLoading.value = false
+
+  try {
+    const res = await getDeviceData(store.currentDeviceId)
+
+    // isLoading.value = false
+
+    store.changeMonitorDevices(res)
+  } catch (error) {
+    error
+  }
+
+
 
   initChart()
+  const startDate = dayjs()
+  switch (currentSelectDayId.value) {
+    case 'week':
+      dateRange.value = [startDate, startDate.add(7, 'day')]
+      break;
+    case 'month':
+      dateRange.value = [startDate, startDate.add(30, 'day')]
+      break
+    case 'quarter':
+      dateRange.value = [startDate, startDate.add(90, 'day')]
+      break
+    default:
+      dateRange.value = undefined
+      break;
+  }
 
-  loadWaveChart();
+
+  // await loadWaveChart()
 })
 
 onUnmounted(() => {
-  window.clearInterval(timer)
+
   echartInstance?.dispose()
 })
 </script>
@@ -273,18 +1132,19 @@ onUnmounted(() => {
       <div class="detail-header-left">
         <img class="detail-header-left__icon" :src="itemIcon" />
         <span class="detail-header-left__text">本月运行</span>
-        <span class="detail-header-left__strong">3740</span>
+        <span class="detail-header-left__strong">{{ store.currentDevice?.runningHours }}</span>
         <span class="detail-header-left__text" style="margin-left: 5px;">H</span>
         <span class="detail-header-left__text">24H报警</span>
-        <span class="detail-header-left__strong" style="min-width:0px;margin-left: 5px;">3</span>
+        <span class="detail-header-left__strong" style="min-width:0px;margin-left: 5px;">{{
+          store.currentDevice?.alarmCount }}</span>
         <span class="detail-header-left__text" style="margin-left: 5px;">条</span>
       </div>
-      <div class="detail-header-center">HE-05 设备运行情况</div>
+      <div class="detail-header-center">{{ store.currentDevice?.label }} 设备运行情况</div>
       <div class="detail-header-right">
         <div class="detail-header-right__time">
-          <span class="detail-header-right__time__day">{{ dateDay }}</span>
-          <span class="detail-header-right__time__weekday">{{ dateWeekday }}</span>
-          <span class="detail-header-right__time__time">{{ dateTime }}</span>
+          <span class="detail-header-right__time__day">{{ store.dateDay }}</span>
+          <span class="detail-header-right__time__weekday">{{ store.dateWeekday }}</span>
+          <span class="detail-header-right__time__time">{{ store.dateTime }}</span>
         </div>
       </div>
     </div>
@@ -292,164 +1152,56 @@ onUnmounted(() => {
       <div class="detail-content-header">
         <div class="detail-content-header__device__one"></div>
         <div class="detail-content-header__device__two"></div>
-        <div class="detail-content-header__device__bearing detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">Bearing 1# (mm/s)</div>
+        <div class="detail-content-header__device" v-for="item in store.monitorDevices" :key="item.id"
+          :class="`detail-content-header__device__${item.tag} ${item.id === currentId ? 'active' : ''}`"
+          @click="onMonitorDeviceClick(item.id)">
+          <div class="detail-content-header__device__bearing__title">{{ item.label }} {{ item.titleShowUnit ?
+            `(${item.unit})` : '' }}</div>
           <div class="detail-content-header__device__bearing__content">
             <div class="detail-content-header__device__bearing__content__icon"></div>
             <div class="detail-content-header__device__bearing__content__detail">
               <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">8.85</span>
-                <span>mm/s</span>
+                <span class="strong">{{ item.value }}</span>
+                <span>{{ item.unit }}</span>
               </div>
               <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>速度</span>
-                <span style="margin-left: auto;">28秒前</span>
+                <span>{{ item.name }}</span>
+                <span style="margin-left: auto;">{{ item.history }}前</span>
               </div>
             </div>
           </div>
         </div>
-        <div class="detail-content-header__device__bearing2 detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">Bearing 2# (mm/s)</div>
-          <div class="detail-content-header__device__bearing__content">
-            <div class="detail-content-header__device__bearing__content__icon"></div>
-            <div class="detail-content-header__device__bearing__content__detail">
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">0.72</span>
-                <span>mm/s</span>
-              </div>
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>速度</span>
-                <span style="margin-left: auto;">28秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__motor detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">Main Motor (mm/s)</div>
-          <div class="detail-content-header__device__bearing__content">
-            <div class="detail-content-header__device__bearing__content__icon"></div>
-            <div class="detail-content-header__device__bearing__content__detail">
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">1.55</span>
-                <span>mm/s</span>
-              </div>
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>速度</span>
-                <span style="margin-left: auto;">28秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__flywheel detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">Fiywheel (mm/s)</div>
-          <div class="detail-content-header__device__bearing__content">
-            <div class="detail-content-header__device__bearing__content__icon"></div>
-            <div class="detail-content-header__device__bearing__content__detail">
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">12.41</span>
-                <span>mm/s</span>
-              </div>
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>速度</span>
-                <span style="margin-left: auto;">28秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__expender detail-content-header__device">
-          <div class="detail-content-header__device__expender__icon"></div>
-          <div class="detail-content-header__device__expender__detail">
-            <div class="detail-content-header__device__expender__title">Expender （℃）</div>
-            <div class="detail-content-header__device__expender__content">
-              <div class="detail-content-header__device__expender__content__item">
-                <span class="strong">37.1</span>
-                <span>℃</span>
-              </div>
-              <div class="detail-content-header__device__expender__content__item">
-                <span>温度</span>
-                <span style="margin-left: auto;">19秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__expender2 detail-content-header__device">
-          <div class="detail-content-header__device__expender__icon"></div>
-          <div class="detail-content-header__device__expender__detail">
-            <div class="detail-content-header__device__expender__title">干燥炉温度 （℃）</div>
-            <div class="detail-content-header__device__expender__content">
-              <div class="detail-content-header__device__expender__content__item">
-                <span class="strong">37.1</span>
-                <span>℃</span>
-              </div>
-              <div class="detail-content-header__device__expender__content__item">
-                <span>温度</span>
-                <span style="margin-left: auto;">19秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__leak detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">Leak</div>
-          <div class="detail-content-header__device__bearing__content">
-            <div class="detail-content-header__device__bearing__content__icon"></div>
-            <div class="detail-content-header__device__bearing__content__detail">
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">0.05</span>
-                <span>Torr</span>
-              </div>
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>真空度</span>
-                <span style="margin-left: auto;">28秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__fan detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">干燥炉 风机1# (mm/s)</div>
-          <div class="detail-content-header__device__bearing__content">
-            <div class="detail-content-header__device__bearing__content__icon"></div>
-            <div class="detail-content-header__device__bearing__content__detail">
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">16.92</span>
-                <span>mm/s</span>
-              </div>
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>速度</span>
-                <span style="margin-left: auto;">28秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="detail-content-header__device__fan2 detail-content-header__device">
-          <div class="detail-content-header__device__bearing__title">干燥炉 风机2# (mm/s)</div>
-          <div class="detail-content-header__device__bearing__content">
-            <div class="detail-content-header__device__bearing__content__icon"></div>
-            <div class="detail-content-header__device__bearing__content__detail">
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span class="strong">16.92</span>
-                <span>mm/s</span>
-              </div>
-              <div class="detail-content-header__device__bearing__content__detail__item">
-                <span>速度</span>
-                <span style="margin-left: auto;">28秒前</span>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
       <div class="detail-content-echarts">
         <div class="detail-content-echarts__title">
-          <span>Bearing 1# (mm/s)</span>
-          <span> 11001.192.168.0.101.1TS-RE-V8T</span>
+          <span>{{ currentItem?.label }} {{ `(${currentItem?.unit})` }}</span>
+          <!-- <span>11001.192.168.0.101.1TS-RE-V8T</span> -->
         </div>
         <div class="detail-content-echarts__divide"></div>
         <div class="detail-content-echarts__menus">
-          <div class="detail-content-echarts__menus__item">加速度</div>
-          <div class="detail-content-echarts__menus__item">速 度</div>
-          <div class="detail-content-echarts__menus__item">位 移</div>
-          <div class="detail-content-echarts__menus__item">温 度</div>
+          <div class="detail-content-echarts__menus__item" :class="{ active: item.id === currentFeatureId }"
+            v-for="item in tagList.filter(item => item.includes.includes(currentId))" :key="item.id"
+            @click="() => currentFeatureId = item.id">{{ item.label }}
+          </div>
+          <div class="detail-content-echarts__menus__date">
+            <span v-for="item in dayList" :key="item.id" :class="{ active: item.id === currentSelectDayId }"
+              @click="() => currentSelectDayId = item.id">{{
+                item.label
+              }}</span>
+            <RangePicker v-if="currentSelectDayId === 'custom'" v-model:value="dateRange" />
+            <span class="download-icon" @click="download"></span>
+          </div>
         </div>
-        <div class="detail-content-echarts__content" ref="echartsRef"></div>
+        <div class="detail-content-echarts__tag" style="display: none;">
+          <div class="detail-content-echarts__tag__name">加速度 | 特征值</div>
+          <div class="detail-content-echarts__tag__em">加速度 (m/s2)</div>
+        </div>
+        <div class="detail-content-echarts__content" ref="echartsRef">
+        </div>
+        <div class="loading" v-if="isLoading">
+          <Spin />
+        </div>
       </div>
     </div>
 
@@ -580,6 +1332,10 @@ onUnmounted(() => {
         color: #fff;
         cursor: pointer;
 
+        &.active {
+          color: #FD0707;
+        }
+
         &__bearing,
         &__bearing2,
         &__motor,
@@ -682,27 +1438,40 @@ onUnmounted(() => {
           position: absolute;
           left: 710px;
           top: 46px;
+          width: 200px;
+          /* height: 90px; */
           align-items: center;
 
-          &__icon {
+          .detail-content-header__device__bearing__content__icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translate(0, -50%);
             width: 9px;
             height: 71px;
             background-image: url('../assets/images/detail-expender-icon.png');
             background-size: 100% 100%;
           }
 
-          &__title {
+          .detail-content-header__device__bearing__title {
+            position: absolute;
+            top: 9px;
+            left: 50%;
+            margin-left: 5px;
+            white-space: nowrap;
+            transform: translate(-50%, 0);
             font-size: 17px;
             font-weight: 600;
             text-align: center;
+            order: 2;
           }
 
-          &__detail {
-            margin-left: 14px;
-
+          .detail-content-header__device__bearing__content__detail {
+            margin-top: 10px;
+            margin-left: 24px;
           }
 
-          &__content {
+          .detail-content-header__device__bearing__content {
             margin-top: 10px;
 
             &__item {
@@ -733,7 +1502,8 @@ onUnmounted(() => {
     }
 
     &-echarts {
-      margin-top: 30px;
+      position: relative;
+      margin-top: 8px;
 
       &__title {
         display: flex;
@@ -763,25 +1533,104 @@ onUnmounted(() => {
       &__menus {
         display: flex;
         margin: 0 auto;
+        margin-bottom: 20px;
         width: 1834px;
         height: 40px;
         line-height: 40px;
+        color: #fff;
 
         &__item {
           margin: 0 24px;
           font-size: 18px;
           font-weight: 700;
-          color: #7D7D7D;
+          /* color: #7D7D7D; */
           cursor: pointer;
+
+          &.active {
+            color: #C10A0A;
+          }
+        }
+
+        &__date {
+          display: flex;
+          margin-left: auto;
+          margin-right: 24px;
+          align-items: center;
+
+          >span {
+            margin: 0 9px;
+            cursor: pointer;
+            text-align: center;
+
+            &.active {
+              color: #FE1010;
+            }
+
+            &.download-icon {
+              width: 16px;
+              height: 16px;
+              background-image: url('../assets/images/download-icon.png');
+              background-size: 100% 100%;
+              cursor: pointer;
+            }
+          }
+        }
+      }
+
+      &__tag {
+        display: flex;
+        align-items: center;
+        margin: 0 auto;
+        width: 1834px;
+        height: 40px;
+        color: #fff;
+        line-height: 40px;
+
+        &__name {
+          font-size: 16px;
+          margin-left: 24px;
+          color: #fff;
+        }
+
+        &__em {
+          position: relative;
+          margin-left: 40px;
+          padding-left: 20px;
+
+
+          &::before {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transform: translateY(-50%);
+            background-color: #00A0E9;
+          }
         }
       }
 
       &__content {
         margin: 0 auto;
+        margin-bottom: 20px;
         width: 1800px;
-        height: 420px;
+        height: 460px;
       }
     }
+  }
+
+  .loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba($color: #000000, $alpha: 0.3);
   }
 }
 </style>

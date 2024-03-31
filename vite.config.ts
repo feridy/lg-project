@@ -1,9 +1,26 @@
 import { fileURLToPath, URL } from 'node:url'
 // @ts-ignore
 import vw from 'postcss-px-to-viewport'
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+
+const myPlugin = (): Plugin => ({
+  name: 'configure-server',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      // console.log('req.url', req.url)
+      if (req.url?.startsWith('/api')) {
+        // if (req.url === '/api/test')
+        console.log(req.url)
+        // if ()
+      }
+
+      next()
+      // 自定义请求处理...
+    })
+  }
+})
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -11,7 +28,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://zhc.tisio.cn/api',
+        target: 'http://18.237.177.125:8000/',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }

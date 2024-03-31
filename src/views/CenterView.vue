@@ -4,8 +4,12 @@ import { ref, onMounted, onUnmounted, computed, reactive } from 'vue'
 import * as echarts from 'echarts'
 import anime from 'animejs'
 import axios from 'axios'
+import { useStore } from '@/stores';
 
 const sevenRef = ref<HTMLDivElement>()
+
+const store = useStore()
+let isDispose = false
 
 let sevenEcharts: echarts.ECharts | null = null
 // const twoEcharts: echarts.ECharts | null = null
@@ -180,9 +184,9 @@ let dataFirst: any[] = []
 let dataSecond: any[] = []
 
 async function getData() {
-  if ((window as any).customConfig?.api) {
+  if (!isDispose) {
     try {
-      const res = await axios.get((window as any).customConfig?.api ?? '/', {
+      const res = await axios.get(((window as any).customConfig ?? '') + `/line/${store.currentDeviceId}/data`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -613,6 +617,7 @@ onUnmounted(() => {
   sevenEcharts?.dispose()
   sevenEcharts = null
   window.clearInterval(timeId)
+  isDispose = true
 
   console.log('onUnmounted')
 })

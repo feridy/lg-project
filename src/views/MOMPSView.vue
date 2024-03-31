@@ -1,38 +1,40 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-let timer: number
-const dateTime = ref('')
-const dateWeekday = ref('')
-const dateDay = ref('')
+import { useStore } from '../stores'
+import { computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-function calcDate() {
-  const date = new Date()
-  const hour = `${date.getHours()}`.padStart(2, '0')
-  const minute = `${date.getMinutes()}`.padStart(2, '0')
-  const second = `${date.getSeconds()}`.padStart(2, '0')
-  const weekday = date.toLocaleDateString('zh-CN', {
-    weekday: 'long'
+const store = useStore()
+const route = useRoute()
+const router = useRouter()
+
+const deviceName = computed(() => store.devices.find(item => item.id === route.query.deviceId)?.label)
+
+function goScreen() {
+  router.push({
+    path: '/center',
+    query: {
+      ...route.query
+    }
   })
-  const day = date.toLocaleDateString('zh-CN', {
-    month: 'long',
-    day: 'numeric'
-  })
-  dateTime.value = `${hour}:${minute}:${second}`
-  dateDay.value = `${day}`
-  dateWeekday.value = `${weekday}`
 }
 
-onMounted(async () => {
-  calcDate()
+function goDetail() {
+  router.push({
+    path: '/detail',
+    query: {
+      ...route.query
+    }
+  })
+}
 
-  timer = window.setInterval(() => {
-    calcDate()
-  }, 1000)
+
+onMounted(() => {
+  if (!route.query.deviceId || !store.devices.some(item => item.id === route.query.deviceId)) {
+    router.replace('/')
+  }
 })
 
-onUnmounted(() => {
-  window.clearInterval(timer)
-})
+
 </script>
 
 <template>
@@ -41,17 +43,17 @@ onUnmounted(() => {
     <div class="momps-time">
       <div class="date-wrapper">
         <div class="day-wrapper">
-          {{ dateDay }}
+          {{ store.dateDay }}
         </div>
         <div class="weekday-wrapper">
-          {{ dateWeekday }}
+          {{ store.dateWeekday }}
         </div>
-        <div class="datetime-wrapper">{{ dateTime }}</div>
+        <div class="datetime-wrapper">{{ store.dateTime }}</div>
       </div>
     </div>
     <div class="momps-container">
       <div class="momps-name">
-        <div>HE-05</div>
+        <div>{{ deviceName }}</div>
         <div>设备运行</div>
         <div>多维度感知 </div>
         <div>MOMPS</div>
@@ -62,8 +64,8 @@ onUnmounted(() => {
       <div class="menu-item four">
         传感器分布
         <div class="menu-item-list">
-          <div class="menu-item-list__item">大屏预览</div>
-          <div class="menu-item-list__item">运行情况</div>
+          <div class="menu-item-list__item" @click="goScreen">大屏预览</div>
+          <div class="menu-item-list__item" @click="goDetail">运行情况</div>
         </div>
       </div>
       <div class="menu-item five">数据下载 </div>

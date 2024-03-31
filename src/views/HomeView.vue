@@ -1,39 +1,62 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
 import itemIcon from '../assets/images/home-tip-icon.png'
-let timer: number
-const dateTime = ref('')
-const dateWeekday = ref('')
-const dateDay = ref('')
+import { useStore } from '../stores'
+import { useRouter } from 'vue-router'
+import { onMounted, ref, computed } from 'vue'
+import { getHomeStatusData } from '../apis'
+import { Spin } from 'ant-design-vue'
 
-function calcDate() {
-  const date = new Date()
-  const hour = `${date.getHours()}`.padStart(2, '0')
-  const minute = `${date.getMinutes()}`.padStart(2, '0')
-  const second = `${date.getSeconds()}`.padStart(2, '0')
-  const weekday = date.toLocaleDateString('zh-CN', {
-    weekday: 'long'
+const store = useStore()
+
+const router = useRouter()
+
+const isLoading = ref(false)
+
+const deviceState = ref<{
+  alarm: string[],
+  emergency: string[],
+  warning: string[]
+}>({
+  alarm: [],
+  emergency: [],
+  warning: []
+})
+
+const waringNum = computed(() => {
+  // let num = 0
+  const list = new Set([...deviceState.value.alarm, ...deviceState.value.emergency, ...deviceState.value.warning])
+  return list.size
+})
+
+
+function onDeviceClick(id: string) {
+  router.push({
+    path: '/momps',
+    query: {
+      deviceId: id
+    }
   })
-  const day = date.toLocaleDateString('zh-CN', {
-    month: 'long',
-    day: 'numeric'
-  })
-  dateTime.value = `${hour}:${minute}:${second}`
-  dateDay.value = `${day}`
-  dateWeekday.value = `${weekday}`
+
+  store.changeCurrentDeviceLabel(id)
 }
 
 onMounted(async () => {
-  calcDate()
+  isLoading.value = true
+  const res = await getHomeStatusData()
 
-  timer = window.setInterval(() => {
-    calcDate()
-  }, 1000)
+  store.changeDevices(res)
+
+  isLoading.value = false
+
+  deviceState.value = {
+    alarm: res.alarm,
+    emergency: res.emergency,
+    warning: res.warning
+  }
+
+  // console.log(res)
 })
 
-onUnmounted(() => {
-  window.clearInterval(timer)
-})
 </script>
 
 <template>
@@ -48,38 +71,39 @@ onUnmounted(() => {
       <div class="right-wrapper">
         <div class="date-wrapper">
           <div class="day-wrapper">
-            {{ dateDay }}
+            {{ store.dateDay }}
           </div>
           <div class="weekday-wrapper">
-            {{ dateWeekday }}
+            {{ store.dateWeekday }}
           </div>
-          <div class="datetime-wrapper">{{ dateTime }}</div>
+          <div class="datetime-wrapper">{{ store.dateTime }}</div>
         </div>
       </div>
     </div>
     <div class="main-wrapper">
       <div class="main-list">
-        <div class="main-list-item" v-for="item in 6" :key="item">
-          <div class="main-list-item__name">HE-05</div>
+        <div class="main-list-item" :class="{ 'no-allow': item.runningHours <= 0 }" v-for="item in store.devices"
+          :key="item.id" @click="onDeviceClick(item.id)">
+          <div class="main-list-item__name">{{ item.label }}</div>
           <div class="main-list-item__info">
             <img class="main-list-item__icon" :src="itemIcon" />
             <div class="main-list-item__content">
-              <div class="main-list-item__top">本月运行<span>3740</span>H</div>
-              <div class="main-list-item__bottom">24H报警<span>3</span>条</div>
+              <div class="main-list-item__top">本月运行<span>{{ item.runningHours }}</span>H</div>
+              <div class="main-list-item__bottom">24H报警<span>{{ item.alarmCount }}</span>条</div>
             </div>
           </div>
         </div>
       </div>
       <div class="main-column">
-        <div class="main-column-title">今日告警<span>1</span>台</div>
+        <div class="main-column-title">今日告警<span>{{ waringNum }}</span>台</div>
         <div class="main-column-item">
           <div class="main-column-item__img one">
             <span>危险告警</span>
           </div>
           <div class="main-column-item__list">
-            <span>HE-05 Bearing 1#</span>
-            <span>HE-05 Bearing 1#</span>
-            <span>HE-05 Bearing 1#</span>
+            <span v-for="(item, index) in deviceState.alarm" :key="index">{{ item }}</span>
+            <!-- <span>HE-05 Bearing 1#</span>
+            <span>HE-05 Bearing 1#</span> -->
           </div>
         </div>
         <div class="main-column-item">
@@ -87,9 +111,9 @@ onUnmounted(() => {
             <span>报警</span>
           </div>
           <div class="main-column-item__list">
-            <span>HE-05 Bearing 1#</span>
-            <span>HE-05 Bearing 1#</span>
-            <span>HE-05 Bearing 1#</span>
+            <span v-for="(item, index) in deviceState.emergency" :key="index">{{ item }}</span>
+            <!-- <span>HE-05 Bearing 1#</span>
+            <span>HE-05 Bearing 1#</span> -->
           </div>
         </div>
         <div class="main-column-item">
@@ -97,11 +121,15 @@ onUnmounted(() => {
             <span>预警</span>
           </div>
           <div class="main-column-item__list">
-            <span>HE-05 Bearing 1#</span>
-            <span>HE-05 Bearing 1#</span>
-            <span>HE-05 Bearing 1#</span>
+            <span v-for="(item, index) in deviceState.warning" :key="index">{{ item }}</span>
+            <!-- <span>HE-05 Bearing 1#</span>
+            <span>HE-05 Bearing 1#</span> -->
           </div>
         </div>
+      </div>
+
+      <div class="loading" v-if="isLoading">
+        <Spin />
       </div>
     </div>
   </div>
@@ -198,6 +226,7 @@ onUnmounted(() => {
   }
 
   .main-wrapper {
+    position: relative;
     display: flex;
     flex: 1;
     justify-content: center;
@@ -218,6 +247,11 @@ onUnmounted(() => {
         background-size: 100% 100%;
         background-repeat: no-repeat;
         background-image: url('../assets/images/box-bg.png');
+
+        &.no-allow {
+          pointer-events: none;
+          filter: grayscale(0.9);
+        }
 
         &__name {
           padding-top: 20px;
@@ -351,6 +385,18 @@ onUnmounted(() => {
 
 
     }
+  }
+
+  .loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba($color: #000000, $alpha: 0.3);
   }
 }
 </style>
