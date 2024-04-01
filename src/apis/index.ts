@@ -3,7 +3,7 @@ import { message } from 'ant-design-vue'
 
 export const request = axios.create({
   baseURL: (window as any).customConfig,
-  timeout: 60 * 1000
+  timeout: 2 * 60 * 1000
 })
 
 request.interceptors.response.use(

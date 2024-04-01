@@ -9,6 +9,7 @@ import { Spin } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
 import { request } from '../apis/index'
 import { getDeviceData, getDeviceEchartsData } from '@/apis';
+
 type RangeValue = [Dayjs, Dayjs];
 
 const store = useStore()
@@ -400,13 +401,13 @@ async function loadEchartData() {
     // 针对真空度的处理
     if (currentId.value === 'leak') {
       const [one, two] = await Promise.all([
-        request.get(`/sensor/Nfill1_${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/Nfill1_${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
           }
         }),
-        request.get(`/sensor/Nfill1_x${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/Nfill1_x${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
@@ -510,13 +511,13 @@ async function loadEchartData() {
     // 针对Expender （℃）的处理
     if (currentId.value === 'expender') {
       const [one, two] = await Promise.all([
-        request.get(`/sensor/oil1_${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/oil1_${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
           }
         }),
-        request.get(`/sensor/oil2_x${feature}`, {
+        request.get(`${store.currentDeviceId}/sensor/oil2_x${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
@@ -618,7 +619,7 @@ async function loadEchartData() {
     // 针对干燥炉温度的处理
     if (currentId.value === 'dryingOven') {
       const [one] = await Promise.all([
-        request.get(`/sensor/dryer_${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/dryer_${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
@@ -686,19 +687,19 @@ async function loadEchartData() {
     // 其他的处理
     if (currentFeatureId.value !== 4) {
       const [x, y, z] = await Promise.all([
-        request.get(`/sensor/${currentId.value}_x${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_x${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
           }
         }),
-        request.get(`/sensor/${currentId.value}_y${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_y${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
           }
         }),
-        request.get(`/sensor/${currentId.value}_z${feature}`, {
+        request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_z${feature}`, {
           params: {
             start: dateRange.value?.[0].valueOf() / 1000,
             end: dateRange.value?.[1].valueOf() / 1000,
@@ -708,24 +709,6 @@ async function loadEchartData() {
       const xData = x.data.data
       const yData = y.data.data
       const zData = z.data.data
-      // const xData = (await request.get(`/sensor/${currentId.value}_x${feature}`, {
-      //   params: {
-      //     start: dateRange.value?.[0].valueOf() / 1000,
-      //     end: dateRange.value?.[1].valueOf() / 1000,
-      //   }
-      // })).data.data
-      // const yData = (await request.get(`/sensor/${currentId.value}_y${feature}`, {
-      //   params: {
-      //     start: dateRange.value?.[0].valueOf() / 1000,
-      //     end: dateRange.value?.[1].valueOf() / 1000,
-      //   }
-      // })).data.data
-      // const zData = (await request.get(`/sensor/${currentId.value}_z${feature}`, {
-      //   params: {
-      //     start: dateRange.value?.[0].valueOf() / 1000,
-      //     end: dateRange.value?.[1].valueOf() / 1000,
-      //   }
-      // })).data.data
 
       const timeData = xData.map((item: any, index: number) => {
         const x = item[0]
@@ -848,10 +831,10 @@ async function loadEchartData() {
         end: 10800 / timeData.length > 1 ? 100 : 10800 / timeData.length
       })
     } else {
-      const tData = (await request.get(`/sensor/${currentId.value}_${feature}`, {
+      const tData = (await request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_${feature}`, {
         params: {
           start: dateRange.value?.[0].valueOf() / 1000,
-          end: dateRange.value?.[0].add(1, 'day').valueOf() / 1000,
+          end: dateRange.value?.[1].valueOf() / 1000,
         }
       })).data.data;
       const timeData = tData.map((item: any,) => {
@@ -1088,6 +1071,7 @@ onMounted(async () => {
   isLoading.value = false
 
   try {
+    
     const res = await getDeviceData(store.currentDeviceId)
 
     // isLoading.value = false

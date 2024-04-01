@@ -1,8 +1,8 @@
 import { getHomeStatusData, type DeviceHistory, type HomeStatusResponseData } from '@/apis'
 import { defineStore } from 'pinia'
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import anime from 'animejs'
+// import anime from 'animejs'
 
 export const useStore = defineStore('store', () => {
   const route = useRoute()
@@ -142,7 +142,7 @@ export const useStore = defineStore('store', () => {
   function calcHistoryText(num: number) {
     const s = num % 60
     const m = Math.ceil(num / 60)
-    const h = Math.ceil((num / 60) * 60)
+    const h = Math.ceil(num / (60 * 60))
     if (num < 60) {
       return `${s}秒`
     }
@@ -189,17 +189,22 @@ export const useStore = defineStore('store', () => {
     })
   }
 
+  function getCurrentDeviceId(label: string) {
+    currentDeviceLabel.value = label
+    const id = computeDeviceId(label)
+
+    return id
+  }
+
   onMounted(async () => {
+    // console.log(2222)
     calcDate()
 
-    const res = await getHomeStatusData()
-
-    changeDevices(res)
-
     if (route.query.deviceId) {
-      // console.log(route.query.deviceId)
       currentDeviceLabel.value = route.query.deviceId as string
     }
+    const res = await getHomeStatusData()
+    changeDevices(res)
     timer = window.setInterval(() => {
       calcDate()
     }, 1000)
