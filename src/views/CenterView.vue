@@ -4,12 +4,8 @@ import { ref, onMounted, onUnmounted, computed, reactive } from 'vue'
 import * as echarts from 'echarts'
 import anime from 'animejs'
 import axios from 'axios'
-import { useStore } from '@/stores';
 
 const sevenRef = ref<HTMLDivElement>()
-
-const store = useStore()
-let isDispose = false
 
 let sevenEcharts: echarts.ECharts | null = null
 // const twoEcharts: echarts.ECharts | null = null
@@ -182,164 +178,160 @@ function calcDate() {
 }
 let dataFirst: any[] = []
 let dataSecond: any[] = []
+let isUnmounted = false
 
 async function getData() {
-  if (!isDispose) {
-    try {
-      const res = await axios.get(((window as any).customConfig ?? '') + `/line/${store.currentDeviceId}/data`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (res.status !== 200) {
-        throw new Error('请求失败')
+  if (isUnmounted) return
+  try {
+    const res = await axios.get((window as any).customConfig ?? '/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
+    })
 
-      const data = res.data
-
-      const dataFirstTemp: [number, number][] = []
-
-      const dataSecondTemp: [number, number][] = []
-
-      if (data.vacuumLeakTesting.vacuum1) {
-        data.vacuumLeakTesting.vacuum1.forEach((item: number, index: number) => {
-          if (item > 0.1) {
-            dataFirstTemp.push([index, item / 100])
-          } else {
-            dataFirstTemp.push([index, item])
-          }
-        })
-
-        // console.log(dataFirst[dataFirst.length - 1][1])
-        if (dataFirstTemp.length) vacuumOneValue.value = dataFirstTemp[dataFirstTemp.length - 1][1]
-      }
-
-      if (data.vacuumLeakTesting.vacuum2) {
-        data.vacuumLeakTesting.vacuum2.forEach((item: number, index: number) => {
-          if (item > 0.1) {
-            dataSecondTemp.push([index, item / 100])
-          } else {
-            dataSecondTemp.push([index, item])
-          }
-        })
-
-        // console.log(dataSecond);
-        if (dataSecondTemp.length)
-          vacuumTwoValue.value = dataSecondTemp[dataSecondTemp.length - 1][1]
-      }
-
-      anime({
-        targets: achivement,
-        ...data.achivement,
-        ...data.state,
-        ...data.equipments.Press.Vibration,
-        vacuum2: dataSecond.length ? dataSecond[dataSecond.length - 1][1] : 0,
-        vacuum1: dataFirst.length ? dataFirst[dataFirst.length - 1][1] : 0,
-        nitrogenFillingFirst: data.equipments.nitrogenFilling.first.pressure,
-        nitrogenFillingSecond: data.equipments.nitrogenFilling.second.pressure,
-        airPurgePressure: data.equipments.airPurge.Pressure,
-        firstOilTemperature: data.equipments.firstFlarePipe.oil.temperature,
-        firstPumpVibration: data.equipments.firstFlarePipe.pump.Vibration,
-        secondOilTemperature: data.equipments.secondFlarePipe.oil.temperature,
-        secondPumpVibration: data.equipments.secondFlarePipe.pump.Vibration,
-        dryingOvenTemperature: data.equipments.dryingOven.Temperature,
-        dryingOvenVibrationFan1: data.equipments.dryingOven.Vibration.fan1,
-        dryingOvenVibrationFan2: data.equipments.dryingOven.Vibration.fan2,
-        autoWeldingCirculatingWaterTemperature:
-          data.equipments.autoWelding.circulatingWater.temperature,
-        round: 100,
-        easing: 'linear',
-        update: function () {
-          upHRateValue.value = achivement.UPHRate
-          upHValue.value = achivement.UPH
-          upHTargetValue.value = achivement.UPHTarget
-          planValue.value = achivement.plan
-          nowValue.value = achivement.now
-          rateValue.value = achivement.rate
-          operationRateValue.value = achivement.operationRate
-          operationTOrT.value = achivement['T/T']
-          bearingOneValue.value = achivement.bearing1
-          bearingTwoValue.value = achivement.bearing2
-          motorValue.value = achivement.motor
-          fiyWheelValue.value = achivement.fiyWheel
-          twoYouWenOneValue.value = achivement.firstOilTemperature
-          twoYouBingDianJiaValue.value = achivement.firstPumpVibration
-          threeYouWenOneValue.value = achivement.secondOilTemperature
-          threeYouBingDianJiaValue.value = achivement.secondPumpVibration
-          fourFengJiOneValue.value = achivement.dryingOvenVibrationFan1
-          fourFengJiTwoValue.value = achivement.dryingOvenVibrationFan2
-          fourGanZhaoValue.value = achivement.dryingOvenTemperature
-          fourKongQiChuiXiValue.value = achivement.airPurgePressure
-          fiveKuoGuangValue.value = achivement.autoWeldingCirculatingWaterTemperature
-          sixChongDanOneValue.value = achivement.nitrogenFillingFirst
-          sixChongDanTwoValue.value = achivement.nitrogenFillingSecond
-
-          vacuumOneValue.value = achivement.vacuum1
-          vacuumTwoValue.value = achivement.vacuum2
-        }
-      })
-
-      if (
-        dataFirst.length !== dataFirstTemp.length ||
-        dataSecond.length !== dataSecondTemp.length
-      ) {
-        dataFirst = dataFirstTemp
-        dataSecond = dataSecondTemp
-        sevenEcharts?.setOption({
-          series: [
-            {
-              data: [
-                [0, 0.019],
-                [120, 0.019]
-              ]
-            },
-            {
-              data: [
-                [0, 0.035],
-                [120, 0.035]
-              ]
-            },
-            {
-              data: dataFirst
-            },
-            {
-              data: [
-                [0, 0.019],
-                [120, 0.019]
-              ]
-            },
-            {
-              data: [
-                [0, 0.035],
-                [120, 0.035]
-              ]
-            },
-            {
-              data: dataSecond
-            }
-          ]
-        })
-      }
-
-      states.airPurgeState = data.equipments.airPurge.state
-      states.dryingOvenState = data.equipments.dryingOven.state
-      states.nitrogenFillingStateFirst = data.equipments.nitrogenFilling.first.state
-      states.nitrogenFillingStateSecond = data.equipments.nitrogenFilling.second.state
-      states.vacuumLeakState = data.vacuumLeakTesting.state
-      states.pressState = data.equipments.Press.state
-      states.flarePipeState =
-        data.equipments.firstFlarePipe.state === data.equipments.secondFlarePipe.state
-          ? data.equipments.firstFlarePipe.state
-          : data.equipments.firstFlarePipe.state !== 'running'
-            ? data.equipments.firstFlarePipe.state
-            : data.equipments.secondFlarePipe.state
-
-      // bearingOneValue.value = data.equipments.Press.Vibration.bearing1;
-    } catch (error) {
-      error
+    if (res.status !== 200) {
+      throw new Error('请求失败')
     }
+
+    const data = res.data
+
+    const dataFirstTemp: [number, number][] = []
+
+    const dataSecondTemp: [number, number][] = []
+
+    if (data.vacuumLeakTesting.vacuum1) {
+      data.vacuumLeakTesting.vacuum1.forEach((item: number, index: number) => {
+        if (item > 0.1) {
+          dataFirstTemp.push([index, item / 100])
+        } else {
+          dataFirstTemp.push([index, item])
+        }
+      })
+
+      // console.log(dataFirst[dataFirst.length - 1][1])
+      if (dataFirstTemp.length) vacuumOneValue.value = dataFirstTemp[dataFirstTemp.length - 1][1]
+    }
+
+    if (data.vacuumLeakTesting.vacuum2) {
+      data.vacuumLeakTesting.vacuum2.forEach((item: number, index: number) => {
+        if (item > 0.1) {
+          dataSecondTemp.push([index, item / 100])
+        } else {
+          dataSecondTemp.push([index, item])
+        }
+      })
+
+      // console.log(dataSecond);
+      if (dataSecondTemp.length) vacuumTwoValue.value = dataSecondTemp[dataSecondTemp.length - 1][1]
+    }
+
+    anime({
+      targets: achivement,
+      ...data.achivement,
+      ...data.state,
+      ...data.equipments.Press.Vibration,
+      vacuum2: dataSecond.length ? dataSecond[dataSecond.length - 1][1] : 0,
+      vacuum1: dataFirst.length ? dataFirst[dataFirst.length - 1][1] : 0,
+      nitrogenFillingFirst: data.equipments.nitrogenFilling.first.pressure,
+      nitrogenFillingSecond: data.equipments.nitrogenFilling.second.pressure,
+      airPurgePressure: data.equipments.airPurge.Pressure,
+      firstOilTemperature: data.equipments.firstFlarePipe.oil.temperature,
+      firstPumpVibration: data.equipments.firstFlarePipe.pump.Vibration,
+      secondOilTemperature: data.equipments.secondFlarePipe.oil.temperature,
+      secondPumpVibration: data.equipments.secondFlarePipe.pump.Vibration,
+      dryingOvenTemperature: data.equipments.dryingOven.Temperature,
+      dryingOvenVibrationFan1: data.equipments.dryingOven.Vibration.fan1,
+      dryingOvenVibrationFan2: data.equipments.dryingOven.Vibration.fan2,
+      autoWeldingCirculatingWaterTemperature:
+        data.equipments.autoWelding.circulatingWater.temperature,
+      round: 100,
+      easing: 'linear',
+      update: function () {
+        upHRateValue.value = achivement.UPHRate
+        upHValue.value = achivement.UPH
+        upHTargetValue.value = achivement.UPHTarget
+        planValue.value = achivement.plan
+        nowValue.value = achivement.now
+        rateValue.value = achivement.rate
+        operationRateValue.value = achivement.operationRate
+        operationTOrT.value = achivement['T/T']
+        bearingOneValue.value = achivement.bearing1
+        bearingTwoValue.value = achivement.bearing2
+        motorValue.value = achivement.motor
+        fiyWheelValue.value = achivement.fiyWheel
+        twoYouWenOneValue.value = achivement.firstOilTemperature
+        twoYouBingDianJiaValue.value = achivement.firstPumpVibration
+        threeYouWenOneValue.value = achivement.secondOilTemperature
+        threeYouBingDianJiaValue.value = achivement.secondPumpVibration
+        fourFengJiOneValue.value = achivement.dryingOvenVibrationFan1
+        fourFengJiTwoValue.value = achivement.dryingOvenVibrationFan2
+        fourGanZhaoValue.value = achivement.dryingOvenTemperature
+        fourKongQiChuiXiValue.value = achivement.airPurgePressure
+        fiveKuoGuangValue.value = achivement.autoWeldingCirculatingWaterTemperature
+        sixChongDanOneValue.value = achivement.nitrogenFillingFirst
+        sixChongDanTwoValue.value = achivement.nitrogenFillingSecond
+
+        vacuumOneValue.value = achivement.vacuum1
+        vacuumTwoValue.value = achivement.vacuum2
+      }
+    })
+
+    if (dataFirst.length !== dataFirstTemp.length || dataSecond.length !== dataSecondTemp.length) {
+      dataFirst = dataFirstTemp
+      dataSecond = dataSecondTemp
+      sevenEcharts?.setOption({
+        series: [
+          {
+            data: [
+              [0, 0.019],
+              [120, 0.019]
+            ]
+          },
+          {
+            data: [
+              [0, 0.035],
+              [120, 0.035]
+            ]
+          },
+          {
+            data: dataFirst
+          },
+          {
+            data: [
+              [0, 0.019],
+              [120, 0.019]
+            ]
+          },
+          {
+            data: [
+              [0, 0.035],
+              [120, 0.035]
+            ]
+          },
+          {
+            data: dataSecond
+          }
+        ]
+      })
+    }
+
+    states.airPurgeState = data.equipments.airPurge.state
+    states.dryingOvenState = data.equipments.dryingOven.state
+    states.nitrogenFillingStateFirst = data.equipments.nitrogenFilling.first.state
+    states.nitrogenFillingStateSecond = data.equipments.nitrogenFilling.second.state
+    states.vacuumLeakState = data.vacuumLeakTesting.state
+    states.pressState = data.equipments.Press.state
+    states.flarePipeState =
+      data.equipments.firstFlarePipe.state === data.equipments.secondFlarePipe.state
+        ? data.equipments.firstFlarePipe.state
+        : data.equipments.firstFlarePipe.state !== 'running'
+          ? data.equipments.firstFlarePipe.state
+          : data.equipments.secondFlarePipe.state
+
+    // bearingOneValue.value = data.equipments.Press.Vibration.bearing1;
+  } catch (error) {
+    error
   }
 
   window.setTimeout(() => {
@@ -617,7 +609,7 @@ onUnmounted(() => {
   sevenEcharts?.dispose()
   sevenEcharts = null
   window.clearInterval(timeId)
-  isDispose = true
+  isUnmounted = true
 
   console.log('onUnmounted')
 })
@@ -701,38 +693,49 @@ onUnmounted(() => {
         <div class="three-main">
           <div class="three-item">
             <span>干燥炉温度</span>
-            <span :class="{
-              normal: states.dryingOvenState === 'running',
-              warning: states.dryingOvenState === 'warning',
-              error: states.dryingOvenState === 'error',
-              'no-line': states.dryingOvenState === 'idle'
-            }">
+            <span
+              :class="{
+                normal: states.dryingOvenState === 'running',
+                warning: states.dryingOvenState === 'warning',
+                error: states.dryingOvenState === 'error',
+                'no-line': states.dryingOvenState === 'idle'
+              }"
+            >
               <span style="font-family: 'custom_font'; font-weight: 800">{{
                 fourGanZhaoValue
-              }}</span>°C
+              }}</span
+              >°C
             </span>
           </div>
           <div class="three-item">
             <span>空气吹洗</span>
-            <span :class="{
-                  normal: states.airPurgeState === 'running',
-                  warning: states.airPurgeState === 'warning',
-                  error: states.airPurgeState === 'error',
-                  'no-line': states.airPurgeState === 'idle'
-                }"><span style="font-family: 'custom_font'; font-weight: 800">{{
-      fourKongQiChuiXiValue
-    }}</span>Mpa</span>
+            <span
+              :class="{
+                normal: states.airPurgeState === 'running',
+                warning: states.airPurgeState === 'warning',
+                error: states.airPurgeState === 'error',
+                'no-line': states.airPurgeState === 'idle'
+              }"
+              ><span style="font-family: 'custom_font'; font-weight: 800">{{
+                fourKongQiChuiXiValue
+              }}</span
+              >Mpa</span
+            >
           </div>
           <div class="three-item">
             <span>一次充氮</span>
-            <span :class="{
-                  normal: states.nitrogenFillingStateFirst === 'running',
-                  warning: states.nitrogenFillingStateFirst === 'warning',
-                  error: states.nitrogenFillingStateFirst === 'error',
-                  'no-line': states.nitrogenFillingStateFirst === 'idle'
-                }"><span style="font-family: 'custom_font'; font-weight: 800">{{
-      sixChongDanOneValue
-    }}</span>Mpa</span>
+            <span
+              :class="{
+                normal: states.nitrogenFillingStateFirst === 'running',
+                warning: states.nitrogenFillingStateFirst === 'warning',
+                error: states.nitrogenFillingStateFirst === 'error',
+                'no-line': states.nitrogenFillingStateFirst === 'idle'
+              }"
+              ><span style="font-family: 'custom_font'; font-weight: 800">{{
+                sixChongDanOneValue
+              }}</span
+              >Mpa</span
+            >
           </div>
           <div class="three-item">
             <span>设备真空度(Torr)</span>
@@ -744,12 +747,16 @@ onUnmounted(() => {
           <div></div>
           <div class="three-item">
             <span>二次充氮</span>
-            <span :class="{
-              normal: states.nitrogenFillingStateSecond === 'running',
-              warning: states.nitrogenFillingStateSecond === 'warning',
-              error: states.nitrogenFillingStateSecond === 'error',
-              'no-line': states.nitrogenFillingStateSecond === 'idle'
-            }"><span style="font-family: 'custom_font'">{{ sixChongDanTwoValue }}</span>Mpa</span>
+            <span
+              :class="{
+                normal: states.nitrogenFillingStateSecond === 'running',
+                warning: states.nitrogenFillingStateSecond === 'warning',
+                error: states.nitrogenFillingStateSecond === 'error',
+                'no-line': states.nitrogenFillingStateSecond === 'idle'
+              }"
+              ><span style="font-family: 'custom_font'">{{ sixChongDanTwoValue }}</span
+              >Mpa</span
+            >
           </div>
         </div>
       </div>
@@ -757,74 +764,98 @@ onUnmounted(() => {
     <div class="show-wrapper">
       <div class="pass-tag">
         Press
-        <span class="status" :class="{
-          normal: states.pressState === 'running',
-          warning: states.pressState === 'warning',
-          error: states.pressState === 'error',
-          'no-line': states.pressState === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.pressState === 'running',
+            warning: states.pressState === 'warning',
+            error: states.pressState === 'error',
+            'no-line': states.pressState === 'idle'
+          }"
+        ></span>
       </div>
       <div class="expender">
         扩管机
-        <span class="status" :class="{
-          normal: states.flarePipeState === 'running',
-          warning: states.flarePipeState === 'warning',
-          error: states.flarePipeState === 'error',
-          'no-line': states.flarePipeState === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.flarePipeState === 'running',
+            warning: states.flarePipeState === 'warning',
+            error: states.flarePipeState === 'error',
+            'no-line': states.flarePipeState === 'idle'
+          }"
+        ></span>
       </div>
       <div>
         干燥炉
-        <span class="status" :class="{
-          normal: states.dryingOvenState === 'running',
-          warning: states.dryingOvenState === 'warning',
-          error: states.dryingOvenState === 'error',
-          'no-line': states.dryingOvenState === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.dryingOvenState === 'running',
+            warning: states.dryingOvenState === 'warning',
+            error: states.dryingOvenState === 'error',
+            'no-line': states.dryingOvenState === 'idle'
+          }"
+        ></span>
       </div>
       <div>
         空气吹洗
-        <span class="status" :class="{
-          normal: states.airPurgeState === 'running',
-          warning: states.airPurgeState === 'warning',
-          error: states.airPurgeState === 'error',
-          'no-line': states.airPurgeState === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.airPurgeState === 'running',
+            warning: states.airPurgeState === 'warning',
+            error: states.airPurgeState === 'error',
+            'no-line': states.airPurgeState === 'idle'
+          }"
+        ></span>
       </div>
       <div>
         1次充氮
-        <span class="status" :class="{
-          normal: states.nitrogenFillingStateFirst === 'running',
-          warning: states.nitrogenFillingStateFirst === 'warning',
-          error: states.nitrogenFillingStateFirst === 'error',
-          'no-line': states.nitrogenFillingStateFirst === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.nitrogenFillingStateFirst === 'running',
+            warning: states.nitrogenFillingStateFirst === 'warning',
+            error: states.nitrogenFillingStateFirst === 'error',
+            'no-line': states.nitrogenFillingStateFirst === 'idle'
+          }"
+        ></span>
       </div>
       <div>
         自动焊接
-        <span class="status" :class="{
-          normal: states.autoWeldingState === 'running',
-          warning: states.autoWeldingState === 'warning',
-          error: states.autoWeldingState === 'error'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.autoWeldingState === 'running',
+            warning: states.autoWeldingState === 'warning',
+            error: states.autoWeldingState === 'error'
+          }"
+        ></span>
       </div>
       <div>
         2次充氮
-        <span class="status" :class="{
-          normal: states.nitrogenFillingStateSecond === 'running',
-          warning: states.nitrogenFillingStateSecond === 'warning',
-          error: states.nitrogenFillingStateSecond === 'error',
-          'no-line': states.nitrogenFillingStateSecond === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.nitrogenFillingStateSecond === 'running',
+            warning: states.nitrogenFillingStateSecond === 'warning',
+            error: states.nitrogenFillingStateSecond === 'error',
+            'no-line': states.nitrogenFillingStateSecond === 'idle'
+          }"
+        ></span>
       </div>
       <div>
         真空验漏 1#2#
-        <span class="status" :class="{
-          normal: states.vacuumLeakState === 'running',
-          warning: states.vacuumLeakState === 'warning',
-          error: states.vacuumLeakState === 'error',
-          'no-line': states.vacuumLeakState === 'idle'
-        }"></span>
+        <span
+          class="status"
+          :class="{
+            normal: states.vacuumLeakState === 'running',
+            warning: states.vacuumLeakState === 'warning',
+            error: states.vacuumLeakState === 'error',
+            'no-line': states.vacuumLeakState === 'idle'
+          }"
+        ></span>
       </div>
     </div>
     <div class="bottom-wrapper">
@@ -878,7 +909,10 @@ onUnmounted(() => {
             <!-- <div class="two-content" ref="twoRef"></div> -->
             <div class="two-item one">
               <div class="two-item-progress"></div>
-              <div class="two-item-pointer" :style="`transform: rotate(${twoYouWenOneDeg}deg);`"></div>
+              <div
+                class="two-item-pointer"
+                :style="`transform: rotate(${twoYouWenOneDeg}deg);`"
+              ></div>
               <div class="two-item-num" style="font-family: custom_font">
                 {{ twoYouWenOneValue }}°C
               </div>
@@ -904,7 +938,10 @@ onUnmounted(() => {
             </div>
             <div class="three-item one">
               <div class="three-item-progress"></div>
-              <div class="three-item-pointer" :style="`transform: rotate(${threeYouWenOneDeg}deg);`"></div>
+              <div
+                class="three-item-pointer"
+                :style="`transform: rotate(${threeYouWenOneDeg}deg);`"
+              ></div>
               <div class="three-item-num" style="font-family: custom_font">
                 {{ threeYouWenOneValue }}°C
               </div>
@@ -950,7 +987,8 @@ onUnmounted(() => {
               </div>
               <div class="pointer" :style="`transform: rotate(${fourKongQiChuiXiDeg}deg)`"></div>
               <div class="show-num">
-                {{ fourKongQiChuiXiValue }}<span style="font-family: sans-serif">MPA</span>
+                {{ fourKongQiChuiXiValue }}
+                <!-- <span style="font-family: sans-serif">MPA</span> -->
               </div>
               <div class="title-wrapper">空气吹洗</div>
             </div>
@@ -965,11 +1003,16 @@ onUnmounted(() => {
               <div class="pointer-wrapper" :style="`transform: rotate(${fiveValue}deg)`">
                 <div class="pointer-main"></div>
               </div>
-              <div class="five-num" style="font-family: custom_font">{{ fiveKuoGuangValue }}°C</div>
+              <div
+                class="five-num"
+                style="font-family: custom_font; left: 50%; transform: translateX(-50%)"
+              >
+                {{ fiveKuoGuangValue }}°C
+              </div>
             </div>
             <!-- <div class="five-content" ref="fiveRef"></div> -->
             <div class="tip-one">
-              <span>上限: 60°C</span>
+              <span>上限: 70°C</span>
               <span>运行: {{ fiveKuoGuangValue }}°C</span>
             </div>
           </div>
@@ -981,14 +1024,16 @@ onUnmounted(() => {
             <div class="six_item one">
               <div class="pointer" :style="`transform: rotate(${sixChongDanOneDeg}deg)`"></div>
               <div class="show-num">
-                {{ sixChongDanOneValue }}<span style="font-family: sans-serif">MPA</span>
+                {{ sixChongDanOneValue }}
+                <!-- <span style="font-family: sans-serif">MPA</span> -->
               </div>
               <div class="title-wrapper">1次 充氮</div>
             </div>
             <div class="six_item two">
               <div class="pointer" :style="`transform: rotate(${sixChongDanTwoDeg}deg)`"></div>
               <div class="show-num">
-                {{ sixChongDanTwoValue }}<span style="font-family: sans-serif">MPA</span>
+                {{ sixChongDanTwoValue }}
+                <!-- <span style="font-family: sans-serif">MPA</span> -->
               </div>
               <div class="title-wrapper">2次 充氮</div>
             </div>
@@ -1049,7 +1094,7 @@ onUnmounted(() => {
         line-height: 27px;
         font-family: 'Microsoft YaHei', sans-serif;
 
-        >span {
+        > span {
           margin: 0 3px;
         }
       }
@@ -1083,7 +1128,7 @@ onUnmounted(() => {
         align-items: center;
         color: #fff;
 
-        >div {
+        > div {
           margin-left: 10px;
         }
       }
@@ -1096,13 +1141,13 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
 
-      >div {
+      > div {
         font-size: 16px;
         display: flex;
         align-items: center;
         color: #f3f4fb;
 
-        >span {
+        > span {
           margin-right: 10px;
         }
       }
@@ -1129,10 +1174,12 @@ onUnmounted(() => {
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center; */
-        background: linear-gradient(90deg,
-            rgba(66, 5, 15, 0) 0%,
-            rgba(143, 16, 16, 0.99) 47%,
-            rgba(66, 5, 15, 0) 100%);
+        background: linear-gradient(
+          90deg,
+          rgba(66, 5, 15, 0) 0%,
+          rgba(143, 16, 16, 0.99) 47%,
+          rgba(66, 5, 15, 0) 100%
+        );
       }
 
       .one-main {
@@ -1154,7 +1201,7 @@ onUnmounted(() => {
           justify-content: center;
           align-items: center;
 
-          &>span {
+          & > span {
             line-height: 1.2;
 
             &:first-child {
@@ -1184,10 +1231,12 @@ onUnmounted(() => {
         font-size: 22px;
         color: #ffffff;
         font-weight: 600;
-        background: linear-gradient(90deg,
-            rgba(66, 5, 15, 0) 0%,
-            rgba(143, 16, 16, 0.99) 47%,
-            rgba(66, 5, 15, 0) 100%);
+        background: linear-gradient(
+          90deg,
+          rgba(66, 5, 15, 0) 0%,
+          rgba(143, 16, 16, 0.99) 47%,
+          rgba(66, 5, 15, 0) 100%
+        );
         /* background-image: url('../assets/images/bg_two.png');
         background-position: center;
         background-repeat: no-repeat;
@@ -1215,7 +1264,7 @@ onUnmounted(() => {
           background-repeat: no-repeat;
           background-size: cover;
 
-          &>span {
+          & > span {
             height: 50%;
             display: flex;
             align-items: center;
@@ -1283,10 +1332,12 @@ onUnmounted(() => {
         font-size: 22px;
         color: #ffffff;
         font-weight: 600;
-        background: linear-gradient(90deg,
-            rgba(66, 5, 15, 0) 0%,
-            rgba(143, 16, 16, 0.99) 47%,
-            rgba(66, 5, 15, 0) 100%);
+        background: linear-gradient(
+          90deg,
+          rgba(66, 5, 15, 0) 0%,
+          rgba(143, 16, 16, 0.99) 47%,
+          rgba(66, 5, 15, 0) 100%
+        );
         /* background-image: url('../assets/images/bg_num.png');
         background-size: cover;
         background-repeat: no-repeat;
@@ -1312,7 +1363,7 @@ onUnmounted(() => {
           background-repeat: no-repeat;
           background-size: cover;
 
-          &>span {
+          & > span {
             height: 50%;
             display: flex;
             align-items: center;
@@ -1332,7 +1383,7 @@ onUnmounted(() => {
               font-weight: 600;
               line-height: 1;
 
-              >span {
+              > span {
                 &:first-child {
                   margin-right: 4px;
                   font-weight: 800;
@@ -1395,7 +1446,7 @@ onUnmounted(() => {
     background-position: center;
     background-size: 100% 100%;
 
-    >div {
+    > div {
       position: absolute;
       display: flex;
       align-items: center;
@@ -1482,7 +1533,7 @@ onUnmounted(() => {
         margin: 0 2px;
 
         &:nth-child(1) {
-          width: 298px;
+          width: 300px;
         }
 
         &:nth-child(2) {
@@ -1494,7 +1545,7 @@ onUnmounted(() => {
         }
 
         &:nth-child(4) {
-          width: 314px;
+          width: 320px;
         }
 
         &:nth-child(5) {
@@ -1526,7 +1577,7 @@ onUnmounted(() => {
       display: flex;
       margin-top: 4px;
 
-      >div {
+      > div {
         margin: 0 2px;
       }
 
@@ -1551,7 +1602,7 @@ onUnmounted(() => {
           font-size: 16px;
           justify-content: space-between;
 
-          >span {
+          > span {
             &:nth-child(1) {
               margin-left: 20px;
             }
@@ -1676,7 +1727,7 @@ onUnmounted(() => {
               font-size: 14px;
               color: #ffffff;
 
-              >span {
+              > span {
                 &:last-child {
                   margin-left: 10px;
                 }
@@ -1686,6 +1737,7 @@ onUnmounted(() => {
 
           &.two {
             position: relative;
+            margin-top: 20px;
             margin-left: 8px;
             margin-right: 8px;
             /* margin-top: 40px; */
@@ -1826,7 +1878,7 @@ onUnmounted(() => {
               font-size: 14px;
               color: #ffffff;
 
-              >span {
+              > span {
                 &:last-child {
                   margin-left: 10px;
                 }
@@ -1836,6 +1888,7 @@ onUnmounted(() => {
 
           &.two {
             position: relative;
+            margin-top: 20px;
             margin-left: 8px;
             margin-right: 8px;
             /* margin-top: 40px; */
@@ -1894,7 +1947,7 @@ onUnmounted(() => {
           font-size: 16px;
           justify-content: space-between;
 
-          >span {
+          > span {
             &:nth-child(1) {
               margin-left: 20px;
             }
@@ -1931,6 +1984,7 @@ onUnmounted(() => {
           &.two,
           &.one {
             position: relative;
+            margin-top: 20px;
             margin-left: 12px;
             margin-right: 12px;
             width: 132px;
@@ -1965,7 +2019,7 @@ onUnmounted(() => {
               font-size: 16px;
               transform: translateX(-50%);
 
-              >span {
+              > span {
                 &:last-child {
                   margin-left: 20px;
                 }
@@ -1978,7 +2032,9 @@ onUnmounted(() => {
 
             .show-num {
               font-size: 14px;
-              bottom: -15px;
+              bottom: 8px;
+              left: 50%;
+              transform: translateX(-60%);
             }
 
             .pointer {
@@ -2030,7 +2086,7 @@ onUnmounted(() => {
               font-size: 16px;
               transform: translateX(-50%);
 
-              >span {
+              > span {
                 &:last-child {
                   margin-left: 20px;
                 }
@@ -2043,7 +2099,7 @@ onUnmounted(() => {
 
             .show-num {
               position: absolute;
-              bottom: 12px;
+              bottom: 20px;
               display: flex;
               flex-flow: column;
               transform: translate(-50%, 0px);
@@ -2051,7 +2107,7 @@ onUnmounted(() => {
               align-items: center;
               justify-content: center;
 
-              >span {
+              > span {
                 font-weight: 600;
                 color: #deff9f;
               }
@@ -2124,7 +2180,7 @@ onUnmounted(() => {
           left: 50%;
           transform: translate(-50%, -50%);
           width: 168px;
-          height: 165px;
+          height: 175px;
           background-image: url('../assets/images/five-main.png');
           background-repeat: no-repeat;
           background-size: cover;
@@ -2132,7 +2188,7 @@ onUnmounted(() => {
 
           .pointer-wrapper {
             position: absolute;
-            top: 26px;
+            top: 36px;
             left: 27px;
             transform: rotate(0deg);
             transform-origin: bottom right;
@@ -2153,7 +2209,7 @@ onUnmounted(() => {
 
           .five-num {
             position: absolute;
-            top: 80px;
+            top: 90px;
             left: 58px;
             z-index: 2;
             color: #fff;
@@ -2183,7 +2239,7 @@ onUnmounted(() => {
           color: #ffffff;
           width: 100%;
 
-          >span {
+          > span {
             &:last-child {
               margin-left: 10px;
             }
@@ -2242,7 +2298,7 @@ onUnmounted(() => {
 
           .show-num {
             position: absolute;
-            bottom: 12px;
+            bottom: 20px;
             display: flex;
             flex-flow: column;
             transform: translate(-50%, 0px);
@@ -2250,7 +2306,7 @@ onUnmounted(() => {
             align-items: center;
             justify-content: center;
 
-            >span {
+            > span {
               font-weight: 600;
               color: #deff9f;
             }
@@ -2307,6 +2363,7 @@ onUnmounted(() => {
   .fiy_wheel,
   .six_item {
     position: relative;
+    margin-top: 20px;
     margin-left: 8px;
     margin-right: 8px;
     width: 132px;

@@ -13,8 +13,8 @@ const router = useRouter()
 const isLoading = ref(false)
 
 const deviceState = ref<{
-  alarm: string[],
-  emergency: string[],
+  alarm: string[]
+  emergency: string[]
   warning: string[]
 }>({
   alarm: [],
@@ -24,10 +24,13 @@ const deviceState = ref<{
 
 const waringNum = computed(() => {
   // let num = 0
-  const list = new Set([...deviceState.value.alarm, ...deviceState.value.emergency, ...deviceState.value.warning])
+  const list = new Set([
+    ...deviceState.value.alarm,
+    ...deviceState.value.emergency,
+    ...deviceState.value.warning
+  ])
   return list.size
 })
-
 
 function onDeviceClick(id: string) {
   router.push({
@@ -56,7 +59,6 @@ onMounted(async () => {
 
   // console.log(res)
 })
-
 </script>
 
 <template>
@@ -82,20 +84,34 @@ onMounted(async () => {
     </div>
     <div class="main-wrapper">
       <div class="main-list">
-        <div class="main-list-item" :class="{ 'no-allow': item.runningHours <= 0 }" v-for="item in store.devices"
-          :key="item.id" @click="onDeviceClick(item.id)">
+        <div
+          class="main-list-item"
+          :class="{ 'no-allow': item.runningHours <= 0 }"
+          v-for="item in store.devices"
+          :key="item.id"
+          @click="onDeviceClick(item.id)"
+        >
           <div class="main-list-item__name">{{ item.label }}</div>
           <div class="main-list-item__info">
             <img class="main-list-item__icon" :src="itemIcon" />
             <div class="main-list-item__content">
-              <div class="main-list-item__top">本月运行<span>{{ item.runningHours }}</span>H</div>
-              <div class="main-list-item__bottom">24H报警<span>{{ item.alarmCount }}</span>条</div>
+              <div class="main-list-item__top">
+                本月运行<span>{{ item.runningHours }}</span
+                >H
+              </div>
+              <div class="main-list-item__bottom">
+                24H报警<span>{{ item.alarmCount }}</span
+                >条
+              </div>
             </div>
           </div>
         </div>
       </div>
       <div class="main-column">
-        <div class="main-column-title">今日告警<span>{{ waringNum }}</span>台</div>
+        <div class="main-column-title">
+          今日告警<span>{{ waringNum }}</span
+          >台
+        </div>
         <div class="main-column-item">
           <div class="main-column-item__img one">
             <span>危险告警</span>
@@ -134,7 +150,6 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
 
 <style lang="scss" scoped>
 .home {
@@ -185,7 +200,6 @@ onMounted(async () => {
         background-repeat: no-repeat;
         background-image: url('../assets/images/logo-name.png');
       }
-
     }
 
     .title-wrapper {
@@ -217,12 +231,11 @@ onMounted(async () => {
         align-items: center;
         color: #fff;
 
-        >div {
+        > div {
           margin-left: 10px;
         }
       }
     }
-
   }
 
   .main-wrapper {
@@ -259,7 +272,7 @@ onMounted(async () => {
           color: #fff;
           line-height: 40px;
           font-size: 34px;
-          transition: all .3s ease;
+          transition: all 0.3s ease;
         }
 
         &__info {
@@ -279,7 +292,7 @@ onMounted(async () => {
           font-size: 22px;
           flex: 1;
 
-          >div {
+          > div {
             display: flex;
             padding-right: 30px;
             line-height: 40px;
@@ -300,13 +313,11 @@ onMounted(async () => {
               font-weight: 700;
             }
           }
-
-
         }
 
         &:hover {
           .main-list-item__name {
-            color: #F30808;
+            color: #f30808;
           }
         }
       }
@@ -327,7 +338,7 @@ onMounted(async () => {
         line-height: 30px;
         margin-bottom: 20px;
 
-        >span {
+        > span {
           width: 80px;
           font-size: 40px;
           font-weight: 600;
@@ -343,9 +354,9 @@ onMounted(async () => {
         &__img {
           position: relative;
           font-size: 15px;
-          color: #FFFFFF;
+          color: #ffffff;
 
-          >span {
+          > span {
             position: absolute;
             top: 3px;
             left: 50%;
@@ -379,11 +390,9 @@ onMounted(async () => {
           font-size: 17px;
           line-height: 20px;
           color: #fff;
-          /* overflow-y: auto; */
+          overflow-y: auto;
         }
       }
-
-
     }
   }
 
