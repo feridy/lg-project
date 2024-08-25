@@ -8,14 +8,22 @@ import { useStore } from '../stores'
 import { Spin } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
 import { request } from '../apis/index'
+import { useRoute } from 'vue-router'
 import { getDeviceData, getDeviceEchartsData } from '@/apis'
 
 type RangeValue = [Dayjs, Dayjs]
-
+const newApi = (window as any).NEW_API ?? '/'
 const store = useStore()
-const dateRange = ref<RangeValue>()
+const startDate = dayjs()
+const dateRange = ref<RangeValue>([startDate.subtract(7, 'day'), startDate])
 const echartsRef = ref<HTMLDivElement | null>(null)
 let echartInstance: echarts.ECharts | null = null
+
+const route = useRoute()
+
+// console.log(route)
+
+const lineName = computed(() => route.params.line || 'HE-05')
 
 const dayList = [
   {
@@ -73,6 +81,8 @@ const tagList = ref([
   }
 ])
 
+const renderData = ref<any[]>([])
+
 const currentSelectDayId = ref(dayList[0].id)
 
 const currentId = ref(store.monitorDevices[0].id)
@@ -81,18 +91,6 @@ const isLoading = ref(true)
 const currentFeatureId = ref(1)
 
 const currentItem = computed(() => store.monitorDevices.find((item) => item.id === currentId.value))
-
-function dealData(dateStr: string) {
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  const hour = `${date.getHours()}`.padStart(2, '0')
-  const minute = `${date.getMinutes()}`.padStart(2, '0')
-  const second = `${date.getSeconds()}`.padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-}
 
 function initChart() {
   if (!echartsRef.value) {
@@ -282,64 +280,6 @@ function initChart() {
   // window.echartInstance = echartInstance
 }
 
-function loadChartData(
-  splitNumber: number,
-  data: {
-    dataX: number[]
-    dataY: number[]
-  },
-  min?: number,
-  max?: number
-) {
-  if (min !== undefined && max !== undefined) {
-    const chartMin = (min - min / 4).toFixed(3)
-    const chartMax = (max + max / 10).toFixed(3)
-    // console.log('min:' + min + ';max:' + max + ';chartMin:' + chartMin + ';chartMax:' + chartMax)
-  }
-
-  if (echartInstance) {
-    const options = echartInstance.getOption()
-    const seriesOptions = {
-      type: 'line',
-      name: '加速度',
-      symbol: 'none',
-      itemStyle: {
-        color: '#F56C6C'
-      },
-      xAxisIndex: 0,
-      lineStyle: {
-        width: 1,
-        color: '#409EFF'
-      },
-      label: {
-        show: false
-      },
-      markLine: {
-        symbol: 'circle',
-        label: {
-          position: 'end',
-          formatter: function (t: any) {
-            var e = t.name
-            return '' !== e && t.dataIndex, e
-          },
-          fontSize: 14,
-          fontFamily: 'PingFangSC',
-          color: '#ffffff'
-        },
-        data: []
-      },
-      data: data.dataY
-    }
-    ;(options.xAxis as any)[0].splitNumber = splitNumber
-    ;(options.xAxis as any)[0].data = data.dataX
-    // (options.series as any)[0].data = data.dataY;
-    // (options.series as any)[0].markLine.data = [];
-    options.series = [seriesOptions]
-    echartInstance.clear()
-    echartInstance.setOption(options)
-  }
-}
-
 function download() {
   if (echartInstance) {
     const option = echartInstance.getOption() as any
@@ -374,26 +314,6 @@ function download() {
     a.download = currentItem.value?.label + '.csv'
     a.click()
     window.URL.revokeObjectURL(url)
-  }
-}
-
-function translateFeatureId() {
-  switch (currentFeatureId.value) {
-    case 1:
-      return 'a'
-    case 2:
-      return 'v'
-
-    case 3:
-      return 's'
-    case 4:
-      return 't'
-
-    case 5:
-      return 'p'
-
-    default:
-      return ''
   }
 }
 
@@ -436,39 +356,192 @@ function computeDataZoom(num: number) {
   return Math.min(80000 / num, 100)
 }
 
-async function loadEchartData() {
+function draw(time: string[], x: number[], y: number[], z: number[]) {
   if (!dateRange.value || !echartInstance) return
   const featureName = tagList.value.find((item) => item.id === currentFeatureId.value)?.label
-  const feature = translateFeatureId()
+  // const feature = translateFeatureId()
   const unit = translateFeatureUnit()
   const options = echartInstance.getOption() as any
 
+  options.xAxis[0].splitNumber = 1
+  options.title = {
+    show: true,
+    text: `${featureName} | 特征值`,
+    textStyle: {
+      color: '#FFF',
+      fontSize: 14
+    }
+  }
+  options.xAxis[0].data = time
+
+  options.series = [
+    {
+      type: 'line',
+      name: `X轴-${featureName}(${unit})`,
+      symbol: 'none',
+      itemStyle: {
+        color: '#00A0E9'
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: '#00A0E9'
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: 'circle',
+        label: {
+          position: 'end',
+          formatter: function (t: any) {
+            var e = t.name
+            return '' !== e && t.dataIndex, e
+          },
+          fontSize: 14,
+          fontFamily: 'PingFangSC',
+          color: '#ffffff'
+        },
+        data: []
+      },
+      data: x
+    },
+    {
+      type: 'line',
+      name: `Y轴-${featureName}(${unit})`,
+      symbol: 'none',
+      itemStyle: {
+        color: '#E60012'
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: '#E60012'
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: 'circle',
+        label: {
+          position: 'end',
+          formatter: function (t: any) {
+            var e = t.name
+            return '' !== e && t.dataIndex, e
+          },
+          fontSize: 14,
+          fontFamily: 'PingFangSC',
+          color: '#ffffff'
+        },
+        data: []
+      },
+      data: y
+    },
+    {
+      type: 'line',
+      name: `Z轴-${featureName}(${unit})`,
+      symbol: 'none',
+      itemStyle: {
+        color: '#00FF00'
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: '#00FF00'
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: 'circle',
+        label: {
+          position: 'end',
+          formatter: function (t: any) {
+            var e = t.name
+            return '' !== e && t.dataIndex, e
+          },
+          fontSize: 14,
+          fontFamily: 'PingFangSC',
+          color: '#ffffff'
+        },
+        data: []
+      },
+      data: z
+    }
+  ]
+  echartInstance.clear()
+  echartInstance.setOption(options)
+}
+
+function drawTemperature(time: string[], val: number[]) {
+  if (!dateRange.value || !echartInstance) return
+  const featureName = tagList.value.find((item) => item.id === currentFeatureId.value)?.label
+  // const feature = translateFeatureId()
+  const unit = translateFeatureUnit()
+  const options = echartInstance.getOption() as any
+  options.xAxis[0].splitNumber = 1
+  options.xAxis[0].data = time
+  options.series = [
+    {
+      type: 'line',
+      name: `${featureName}(${unit})`,
+      symbol: 'none',
+      itemStyle: {
+        color: '#00A0E9'
+      },
+      xAxisIndex: 0,
+      lineStyle: {
+        width: 1,
+        color: '#00A0E9'
+      },
+      label: {
+        show: false
+      },
+      markLine: {
+        symbol: 'circle',
+        label: {
+          position: 'end',
+          formatter: function (t: any) {
+            var e = t.name
+            return '' !== e && t.dataIndex, e
+          },
+          fontSize: 14,
+          fontFamily: 'PingFangSC',
+          color: '#ffffff'
+        },
+        data: []
+      },
+      data: val
+    }
+  ]
+  echartInstance.clear()
+  echartInstance.setOption(options)
+}
+
+async function loadEchartData() {
+  if (!dateRange.value || !echartInstance) return
+  const featureName = tagList.value.find((item) => item.id === currentFeatureId.value)?.label
+  const unit = translateFeatureUnit()
+  const options = echartInstance.getOption() as any
   isLoading.value = true
+  renderData.value = []
 
   try {
     // 针对真空度的处理
     if (currentId.value === 'leak') {
-      const [one, two] = await Promise.all([
-        request.get(`/${store.currentDeviceId}/sensor/Nfill1_${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        }),
-        request.get(`/${store.currentDeviceId}/sensor/Nfill2_${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        })
-      ])
+      const res = await request.get(`${newApi}api/getBear1`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
+      })
 
-      const xData = one.data.data
-      const yData = two.data.data
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
 
-      const timeData = xData.map((item: any) => {
-        const x = item[0]
-        return dayjs(x * 1000).format('YYYY-MM-DD HH:mm:ss')
+      const timeData = data.map((item: any) => {
+        return item.time
       })
 
       options.xAxis[0].splitNumber = 1
@@ -512,28 +585,7 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: xData.map(
-            (item: number[]) =>
-              Math.round(
-                Math.min(
-                  1,
-                  Math.max(
-                    item[1] > 10000
-                      ? item[1] / 100000
-                      : item[1] > 1000
-                        ? item[1] / 10000
-                        : item[1] > 100
-                          ? item[1] / 1000
-                          : item[1] > 10
-                            ? item[1] / 100
-                            : item[1] > 1
-                              ? item[1] / 10
-                              : item[1],
-                    0
-                  )
-                ) * 100
-              ) / 100
-          )
+          data: data.map((item: any) => Number(item.leak1))
         },
         {
           type: 'line',
@@ -564,28 +616,7 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: yData.map(
-            (item: number[]) =>
-              Math.round(
-                Math.min(
-                  1,
-                  Math.max(
-                    item[1] > 10000
-                      ? item[1] / 100000
-                      : item[1] > 1000
-                        ? item[1] / 10000
-                        : item[1] > 100
-                          ? item[1] / 1000
-                          : item[1] > 10
-                            ? item[1] / 100
-                            : item[1] > 1
-                              ? item[1] / 10
-                              : item[1],
-                    0
-                  )
-                ) * 100
-              ) / 100
-          )
+          data: data.map((item: any) => Number(item.leak2))
         }
       ]
       echartInstance.clear()
@@ -601,27 +632,18 @@ async function loadEchartData() {
     }
     // 针对Expender （℃）的处理
     if (currentId.value === 'expender') {
-      const [one, two] = await Promise.all([
-        request.get(`/${store.currentDeviceId}/sensor/oil1_${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        }),
-        request.get(`${store.currentDeviceId}/sensor/oil2_${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        })
-      ])
-      const xData = one.data.data
-      const yData = two.data.data
-
-      const timeData = xData.map((item: any) => {
-        const x = item[0]
-        return dayjs(x * 1000).format('YYYY-MM-DD HH:mm:ss')
+      const res = await request.get(`${newApi}api/getExpender`, {
+        params: {
+          line_name: lineName.value,
+          device_name: 'expender',
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
       })
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+
+      const timeData = data.map((item: any) => item.time)
 
       options.xAxis[0].splitNumber = 1
 
@@ -664,7 +686,7 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: xData.map((item: number[]) => item[1])
+          data: data.map((item: any) => Number(item.d_temperature1))
         },
         {
           type: 'line',
@@ -695,33 +717,34 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: yData.map((item: number[]) => item[1])
+          data: data.map((item: any) => Number(item.o_temperature1))
         }
       ]
       echartInstance.clear()
       echartInstance.setOption(options)
 
-      echartInstance.dispatchAction({
-        type: 'dataZoom',
-        start: 0,
-        end: computeDataZoom(timeData.length)
-      })
+      // echartInstance.dispatchAction({
+      //   type: 'dataZoom',
+      //   start: 0,
+      //   end: computeDataZoom(timeData.length)
+      // })
       return
     }
     // 针对干燥炉温度的处理
     if (currentId.value === 'dryingOven') {
-      const [one] = await Promise.all([
-        request.get(`/${store.currentDeviceId}/sensor/dryer_${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        })
-      ])
-      const xData = one.data.data
-      const timeData = xData.map((item: any) => {
-        const x = item[0]
-        return dayjs(x * 1000).format('YYYY-MM-DD HH:mm:ss')
+      const res = await request.get(`${newApi}api/getDryer`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
+      })
+      const data = res.data
+
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+
+      const timeData = data.map((item: any) => {
+        return item.time
       })
       options.xAxis[0].splitNumber = 1
 
@@ -764,257 +787,103 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: xData.map((item: number[]) => item[1])
+          data: data.map((item: any) => (Number.isNaN(Number(item.dry_t)) ? 0 : Number(item.dry_t)))
         }
       ]
       echartInstance.clear()
       echartInstance.setOption(options)
 
-      echartInstance.dispatchAction({
-        type: 'dataZoom',
-        start: 0,
-        end: computeDataZoom(timeData.length)
-      })
+      // echartInstance.dispatchAction({
+      //   type: 'dataZoom',
+      //   start: 0,
+      //   end: computeDataZoom(timeData.length)
+      // })
       return
     }
-    // 其他的处理
-    if (currentFeatureId.value !== 4) {
-      const [x, y, z] = await Promise.all([
-        request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_x${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        }),
-        request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_y${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        }),
-        request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_z${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        })
-      ])
-      const xData = x.data.data as any[]
-      const yData = y.data.data as any[]
-      const zData = z.data.data as any[]
-
-      const xLength = xData.length
-      const yLength = yData.length
-      const zLength = zData.length
-
-      let list = xData
-
-      if (xLength > yLength) {
-        list = xData
-      } else {
-        list = yData
-      }
-
-      if (list.length < zLength) {
-        list = zData
-      }
-
-      const timeData = list.map((item: any, index: number) => {
-        const x = item[0]
-        const y = yData[index]?.[0] ?? x
-        const z = zData[index]?.[0] ?? x
-
-        return dayjs(((x + y + z) / 3) * 1000).format('YYYY-MM-DD HH:mm:ss')
-      })
-
-      const xShowData: number[] = []
-      const yShowData: number[] = []
-      const zShowData: number[] = []
-      list.forEach((item: number[], index) => {
-        const x = xData[index]?.[1] ?? 0
-        const y = yData[index]?.[1] ?? 0
-        const z = zData[index]?.[1] ?? 0
-        xShowData.push(x)
-        yShowData.push(y)
-        zShowData.push(z)
-      })
-
-      options.xAxis[0].splitNumber = 1
-      options.title = {
-        show: true,
-        text: `${featureName} | 特征值`,
-        textStyle: {
-          color: '#FFF',
-          fontSize: 14
+    // bearing1
+    if (currentId.value === 'bearing1') {
+      const res = await request.get(`${newApi}api/getBear1`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
         }
-      }
-      options.xAxis[0].data = timeData
+      })
 
-      options.series = [
-        {
-          type: 'line',
-          name: `X轴-${featureName}(${unit})`,
-          symbol: 'none',
-          itemStyle: {
-            color: '#00A0E9'
-          },
-          xAxisIndex: 0,
-          lineStyle: {
-            width: 1,
-            color: '#00A0E9'
-          },
-          label: {
-            show: false
-          },
-          markLine: {
-            symbol: 'circle',
-            label: {
-              position: 'end',
-              formatter: function (t: any) {
-                var e = t.name
-                return '' !== e && t.dataIndex, e
-              },
-              fontSize: 14,
-              fontFamily: 'PingFangSC',
-              color: '#ffffff'
-            },
-            data: []
-          },
-          data: xShowData
-        },
-        {
-          type: 'line',
-          name: `Y轴-${featureName}(${unit})`,
-          symbol: 'none',
-          itemStyle: {
-            color: '#E60012'
-          },
-          xAxisIndex: 0,
-          lineStyle: {
-            width: 1,
-            color: '#E60012'
-          },
-          label: {
-            show: false
-          },
-          markLine: {
-            symbol: 'circle',
-            label: {
-              position: 'end',
-              formatter: function (t: any) {
-                var e = t.name
-                return '' !== e && t.dataIndex, e
-              },
-              fontSize: 14,
-              fontFamily: 'PingFangSC',
-              color: '#ffffff'
-            },
-            data: []
-          },
-          data: yShowData
-        },
-        {
-          type: 'line',
-          name: `Z轴-${featureName}(${unit})`,
-          symbol: 'none',
-          itemStyle: {
-            color: '#00FF00'
-          },
-          xAxisIndex: 0,
-          lineStyle: {
-            width: 1,
-            color: '#00FF00'
-          },
-          label: {
-            show: false
-          },
-          markLine: {
-            symbol: 'circle',
-            label: {
-              position: 'end',
-              formatter: function (t: any) {
-                var e = t.name
-                return '' !== e && t.dataIndex, e
-              },
-              fontSize: 14,
-              fontFamily: 'PingFangSC',
-              color: '#ffffff'
-            },
-            data: []
-          },
-          data: zShowData
-        }
-      ]
-      echartInstance.clear()
-      echartInstance.setOption(options)
+      const data = res.data
 
-      echartInstance.dispatchAction({
-        type: 'dataZoom',
-        start: 0,
-        end: computeDataZoom(timeData.length) //5000 / timeData.length > 1 ? 100 : 5000 / timeData.length
-      })
-    } else {
-      const tData = (
-        await request.get(`/${store.currentDeviceId}/sensor/${currentId.value}_${feature}`, {
-          params: {
-            start: dateRange.value?.[0].valueOf() / 1000,
-            end: dateRange.value?.[1].valueOf() / 1000
-          }
-        })
-      ).data.data
-      const timeData = tData.map((item: any) => {
-        return dayjs(item[0] * 1000).format('YYYY-MM-DD HH:mm:ss')
-      })
-      options.title = {
-        show: true,
-        text: `${featureName} | 特征值`,
-        textStyle: {
-          color: '#FFF',
-          fontSize: 14
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+
+      renderData.value = data
+      return
+    }
+    // bearing1
+    if (currentId.value === 'bearing2') {
+      const res = await request.get(`${newApi}api/getBear2`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
         }
-      }
-      options.xAxis[0].splitNumber = 1
-      options.xAxis[0].data = timeData
-      options.series = [
-        {
-          type: 'line',
-          name: `${featureName}(${unit})`,
-          symbol: 'none',
-          itemStyle: {
-            color: '#00A0E9'
-          },
-          xAxisIndex: 0,
-          lineStyle: {
-            width: 1,
-            color: '#00A0E9'
-          },
-          label: {
-            show: false
-          },
-          markLine: {
-            symbol: 'circle',
-            label: {
-              position: 'end',
-              formatter: function (t: any) {
-                var e = t.name
-                return '' !== e && t.dataIndex, e
-              },
-              fontSize: 14,
-              fontFamily: 'PingFangSC',
-              color: '#ffffff'
-            },
-            data: []
-          },
-          data: tData.map((item: any) => item[1])
-        }
-      ]
-      echartInstance.clear()
-      echartInstance.setOption(options)
-      echartInstance.dispatchAction({
-        type: 'dataZoom',
-        start: 0,
-        end: computeDataZoom(timeData.length - 4000)
       })
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+      renderData.value = data
+      return
+    }
+    // motor
+    if (currentId.value === 'motor') {
+      const res = await request.get(`${newApi}api/getMotor`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
+      })
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+      renderData.value = data
+      return
+    }
+    // flywheel
+    if (currentId.value === 'flywheel') {
+      const res = await request.get(`${newApi}api/getFly`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
+      })
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+      renderData.value = data
+      return
+    }
+    if (currentId.value === 'fan1') {
+      const res = await request.get(`${newApi}api/getWind1`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
+      })
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+      renderData.value = data
+      return
+    }
+    if (currentId.value === 'fan2') {
+      const res = await request.get(`${newApi}api/getWind2`, {
+        params: {
+          line_name: lineName.value,
+          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
+        }
+      })
+      const data = res.data
+      if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
+      renderData.value = data
+      return
     }
   } catch (error) {
     console.error(error)
@@ -1027,128 +896,59 @@ async function loadEchartData() {
   }
 }
 
-async function loadWaveChart() {
-  if (!dateRange.value) return
+watch(
+  () => {
+    return {
+      data: renderData.value,
+      featureId: currentFeatureId.value
+    }
+  },
+  ({ data, featureId }) => {
+    if (data.length > 0) {
+      console.log(data)
+      const time = data.map((item) => item.time)
+      const xyzw: [number, number, number, number][] = data.map((item: any) => {
+        if (featureId === 1) {
+          return [
+            Number(item.acceleration_x),
+            Number(item.acceleration_y),
+            Number(item.acceleration_z),
+            0
+          ]
+        }
+        if (featureId === 2) {
+          return [Number(item.speed_x), Number(item.speed_y), Number(item.speed_z), 0]
+        }
+        if (featureId === 3) {
+          return [
+            Number(item.displacement_x),
+            Number(item.displacement_y),
+            Number(item.displacement_z),
+            0
+          ]
+        }
+        if (featureId === 4) {
+          return [0, 0, 0, item.temperature]
+        }
 
-  const data = await getDeviceEchartsData(currentId.value, {
-    start: dateRange.value?.[0].valueOf(),
-    end: dateRange.value?.[1].valueOf()
-  })
-
-  // console.log(data)
-
-  const dataX = data.data.map((item: any, index: any) => {
-    const now = dayjs()
-    const time = now.add(index, 'day')
-    return time.format('YYYY-MM-DD HH:MM')
-  })
-
-  if (echartInstance) {
-    const options = echartInstance.getOption()
-    ;(options.xAxis as any)[0].splitNumber = 1
-    ;(options.xAxis as any)[0].data = dataX
-    options.series = [
-      {
-        type: 'line',
-        name: 'X轴加速度',
-        symbol: 'none',
-        itemStyle: {
-          color: '#00A0E9'
-        },
-        xAxisIndex: 0,
-        lineStyle: {
-          width: 1,
-          color: '#00A0E9'
-        },
-        label: {
-          show: false
-        },
-        markLine: {
-          symbol: 'circle',
-          label: {
-            position: 'end',
-            formatter: function (t: any) {
-              var e = t.name
-              return '' !== e && t.dataIndex, e
-            },
-            fontSize: 14,
-            fontFamily: 'PingFangSC',
-            color: '#ffffff'
-          },
-          data: []
-        },
-        data: data.data
-      },
-      {
-        type: 'line',
-        name: 'Y轴加速度',
-        symbol: 'none',
-        itemStyle: {
-          color: '#E60012'
-          // show: false,
-        },
-        xAxisIndex: 0,
-        lineStyle: {
-          width: 1,
-          color: '#E60012'
-        },
-        label: {
-          show: false
-        },
-        markLine: {
-          symbol: 'circle',
-          label: {
-            position: 'end',
-            formatter: function (t: any) {
-              var e = t.name
-              return '' !== e && t.dataIndex, e
-            },
-            fontSize: 14,
-            fontFamily: 'PingFangSC',
-            color: '#ffffff'
-          },
-          data: []
-        },
-        data: data.data.map((item: any) => item + Math.random() * 10)
-      },
-      {
-        type: 'line',
-        name: 'Z轴加速度',
-        symbol: 'none',
-        itemStyle: {
-          color: '#00FF00'
-          // show: false,
-        },
-        xAxisIndex: 0,
-        lineStyle: {
-          width: 1,
-          color: '#00FF00'
-        },
-        label: {
-          show: false
-        },
-        markLine: {
-          symbol: 'circle',
-          label: {
-            position: 'end',
-            formatter: function (t: any) {
-              var e = t.name
-              return '' !== e && t.dataIndex, e
-            },
-            fontSize: 14,
-            fontFamily: 'PingFangSC',
-            color: '#ffffff'
-          },
-          data: []
-        },
-        data: data.data.map((item: any) => item + Math.random() * 10)
+        return [0, 0, 0, 0]
+      })
+      if (featureId < 4) {
+        draw(
+          time,
+          xyzw.map((item) => item[0]),
+          xyzw.map((item) => item[1]),
+          xyzw.map((item) => item[2])
+        )
+      } else {
+        drawTemperature(
+          time,
+          xyzw.map((item) => item[3])
+        )
       }
-    ]
-    // (options.series as any)[0].markLine.data = [];
-    echartInstance.clear()
-    echartInstance.setOption(options)
+    }
   }
-}
+)
 
 watch(currentId, () => {
   currentFeatureId.value = tagList.value.filter((item) =>
@@ -1159,8 +959,8 @@ watch(currentId, () => {
 watch(
   () => ({
     range: dateRange.value,
-    deviceId: currentId.value,
-    feature: currentFeatureId.value
+    deviceId: currentId.value
+    // feature: currentFeatureId.value
   }),
   async ({ range, deviceId }) => {
     if (deviceId)
@@ -1190,7 +990,7 @@ watch(
         dateRange.value = [startDate.subtract(90, 'day'), startDate]
         break
       default:
-        dateRange.value = undefined
+        // dateRange.value = undefined
         break
     }
   }
@@ -1217,16 +1017,16 @@ onMounted(async () => {
   const startDate = dayjs()
   switch (currentSelectDayId.value) {
     case 'week':
-      dateRange.value = [startDate, startDate.add(7, 'day')]
+      dateRange.value = [startDate.subtract(7, 'day'), startDate]
       break
     case 'month':
-      dateRange.value = [startDate, startDate.add(30, 'day')]
+      dateRange.value = [startDate.subtract(30, 'day'), startDate]
       break
     case 'quarter':
-      dateRange.value = [startDate, startDate.add(90, 'day')]
+      dateRange.value = [startDate.subtract(90, 'day'), startDate]
       break
     default:
-      dateRange.value = undefined
+      // dateRange.value = undefined
       break
   }
 

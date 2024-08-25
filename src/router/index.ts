@@ -23,8 +23,9 @@ const router = createRouter({
       component: MOMPSViewVue
     },
     {
-      path: '/detail',
+      path: '/detail/:line?',
       name: 'detail',
+      sensitive: true,
       component: DetailViewVue
     },
     {
