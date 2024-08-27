@@ -7,7 +7,9 @@ const store = useStore()
 const route = useRoute()
 const router = useRouter()
 
-const deviceName = computed(() => store.devices.find(item => item.id === route.query.deviceId)?.label)
+const deviceName = computed(
+  () => store.devices.find((item) => item.id === route.query.deviceId)?.label
+)
 
 function goScreen() {
   router.push({
@@ -19,27 +21,25 @@ function goScreen() {
 }
 
 function goDetail() {
+  const lineName = route.query.deviceId
   router.push({
-    path: '/detail',
+    path: `/detail/${lineName}`,
     query: {
       ...route.query
     }
   })
 }
 
-
 onMounted(() => {
-  if (!route.query.deviceId || !store.devices.some(item => item.id === route.query.deviceId)) {
+  if (!route.query.deviceId || !store.devices.some((item) => item.id === route.query.deviceId)) {
     router.replace('/')
   }
 })
-
-
 </script>
 
 <template>
   <div class="momps-wrapper">
-    <div class="momps-title">MOMPS : Machine Operation Multidimensional Perception System </div>
+    <div class="momps-title">MOMPS : Machine Operation Multidimensional Perception System</div>
     <div class="momps-time">
       <div class="date-wrapper">
         <div class="day-wrapper">
@@ -55,12 +55,12 @@ onMounted(() => {
       <div class="momps-name">
         <div>{{ deviceName }}</div>
         <div>设备运行</div>
-        <div>多维度感知 </div>
+        <div>多维度感知</div>
         <div>MOMPS</div>
       </div>
-      <div class="menu-item one">设备运行诊断 </div>
-      <div class="menu-item two">生产情况 </div>
-      <div class="menu-item three">智能决策平台 </div>
+      <div class="menu-item one">设备运行诊断</div>
+      <div class="menu-item two">生产情况</div>
+      <div class="menu-item three">智能决策平台</div>
       <div class="menu-item four">
         传感器分布
         <div class="menu-item-list">
@@ -68,8 +68,8 @@ onMounted(() => {
           <div class="menu-item-list__item" @click="goDetail">运行情况</div>
         </div>
       </div>
-      <div class="menu-item five">数据下载 </div>
-      <div class="menu-item six">报警数据 </div>
+      <div class="menu-item five">数据下载</div>
+      <div class="menu-item six">报警数据</div>
     </div>
   </div>
 </template>
@@ -110,7 +110,7 @@ onMounted(() => {
       align-items: center;
       color: #fff;
 
-      >div {
+      > div {
         margin-left: 10px;
       }
     }
@@ -137,9 +137,9 @@ onMounted(() => {
       line-height: 1.2;
       color: #fff;
 
-      >div {
+      > div {
         &:first-of-type {
-          color: #900D10;
+          color: #900d10;
         }
       }
     }
@@ -158,7 +158,7 @@ onMounted(() => {
       cursor: pointer;
 
       &:hover {
-        color: #900D10;
+        color: #900d10;
       }
 
       &.one {
@@ -209,7 +209,7 @@ onMounted(() => {
             font-weight: 600;
 
             &:hover {
-              color: #900D10;
+              color: #900d10;
             }
           }
         }

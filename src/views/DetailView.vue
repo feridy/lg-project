@@ -7,12 +7,18 @@ import dayjs from 'dayjs'
 import { useStore } from '../stores'
 import { Spin } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
-import { request } from '../apis/index'
+// import { request } from '../apis/index'
 import { useRoute } from 'vue-router'
 import { getDeviceData, getDeviceEchartsData } from '@/apis'
+import axios from 'axios'
 
 type RangeValue = [Dayjs, Dayjs]
 const newApi = (window as any).NEW_API ?? '/'
+const request = axios.create({
+  baseURL: newApi,
+  timeout: 10 * 1000
+})
+// console.log(newApi)
 const store = useStore()
 const startDate = dayjs()
 const dateRange = ref<RangeValue>([startDate.subtract(7, 'day'), startDate])
@@ -529,7 +535,7 @@ async function loadEchartData() {
   try {
     // 针对真空度的处理
     if (currentId.value === 'leak') {
-      const res = await request.get(`${newApi}api/getBear1`, {
+      const res = await request.get(`${newApi}/api/getLeak`, {
         params: {
           line_name: lineName.value,
           start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
