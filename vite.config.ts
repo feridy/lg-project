@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 // @ts-ignore
 import vw from 'postcss-px-to-viewport'
-import { defineConfig, Plugin } from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 // import dayjs from 'dayjs'

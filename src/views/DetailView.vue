@@ -477,6 +477,12 @@ function draw(time: string[], x: number[], y: number[], z: number[]) {
   ]
   echartInstance.clear()
   echartInstance.setOption(options)
+
+  echartInstance.dispatchAction({
+    type: 'dataZoom',
+    start: 0,
+    end: computeDataZoom(time.length)
+  })
 }
 
 function drawTemperature(time: string[], val: number[]) {
@@ -591,7 +597,7 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: data.map((item: any) => Number(item.leak1))
+          data: data.map((item: any) => Number(item.leak1 || 0))
         },
         {
           type: 'line',
@@ -692,7 +698,7 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: data.map((item: any) => Number(item.d_temperature1))
+          data: data.map((item: any) => Number(item.d_temperature1 || 0))
         },
         {
           type: 'line',
@@ -723,17 +729,17 @@ async function loadEchartData() {
             },
             data: []
           },
-          data: data.map((item: any) => Number(item.o_temperature1))
+          data: data.map((item: any) => Number(item.o_temperature1 || 0))
         }
       ]
       echartInstance.clear()
       echartInstance.setOption(options)
 
-      // echartInstance.dispatchAction({
-      //   type: 'dataZoom',
-      //   start: 0,
-      //   end: computeDataZoom(timeData.length)
-      // })
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: computeDataZoom(timeData.length)
+      })
       return
     }
     // 针对干燥炉温度的处理
@@ -799,11 +805,11 @@ async function loadEchartData() {
       echartInstance.clear()
       echartInstance.setOption(options)
 
-      // echartInstance.dispatchAction({
-      //   type: 'dataZoom',
-      //   start: 0,
-      //   end: computeDataZoom(timeData.length)
-      // })
+      echartInstance.dispatchAction({
+        type: 'dataZoom',
+        start: 0,
+        end: computeDataZoom(timeData.length)
+      })
       return
     }
     // bearing1
@@ -911,7 +917,7 @@ watch(
   },
   ({ data, featureId }) => {
     if (data.length > 0) {
-      console.log(data)
+      // console.log(data)
       const time = data.map((item) => item.time)
       const xyzw: [number, number, number, number][] = data.map((item: any) => {
         if (featureId === 1) {
@@ -934,7 +940,7 @@ watch(
           ]
         }
         if (featureId === 4) {
-          return [0, 0, 0, item.temperature]
+          return [0, 0, 0, Number(item.temperature)]
         }
 
         return [0, 0, 0, 0]
