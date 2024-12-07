@@ -1,0 +1,84 @@
+{
+	"achivement": {
+		"UPH": 0.0,
+		"UPHRate": 0.0,
+		"UPHTarget": 0.0,
+		"now": 1.0,
+		"plan": 1759.0,
+		"rate": 0.1
+	},
+	"equipments": {
+		"Press": {
+			"Vibration": {
+				"bearing1": 0.11,
+				"bearing2": 0,
+				"flyWheel": 0.55,
+				"motor": 0.55
+			},
+			"state": "running"
+		},
+		"airPurge": {
+			"Pressure": 0.505,
+			"state": "running"
+		},
+		"autoWelding": {
+			"circulatingWater": {
+				"highLimit": 70,
+				"lowLimit": 50,
+				"temperature": 27.7
+			},
+			"state": "running"
+		},
+		"dryingOven": {
+			"Temperature": 0.0,
+			"Vibration": {
+				"fan1": 0.0,
+				"fan2": 0.0
+			},
+			"state": "running"
+		},
+		"firstFlarePipe": {
+			"oil": {
+				"highLimit": 60,
+				"lowLimit": 30.6,
+				"temperature": 0
+			},
+			"pump": {
+				"Vibration": 0
+			},
+			"state": "running"
+		},
+		"nitrogenFilling": {
+			"first": {
+				"pressure": 0.421,
+				"state": "running"
+			},
+			"second": {
+				"pressure": 0.132,
+				"state": "running"
+			}
+		},
+		"secondFlarePipe": {
+			"oil": {
+				"highLimit": 60,
+				"lowLimit": 30.6,
+				"temperature": 0
+			},
+			"pump": {
+				"Vibration": 0
+			},
+			"state": "running"
+		}
+	},
+	"state": {
+		"T/T": 0.0,
+		"operationRate": 0.0
+	},
+	"vacuumLeakTesting": {
+		"leak1": [],
+		"leak2": [],
+		"state": "running",
+		"vacuum1": 0.015,
+		"vacuum2": 0.008
+	}
+}

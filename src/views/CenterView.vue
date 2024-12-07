@@ -188,45 +188,36 @@ let isUnmounted = false
 async function getData() {
   if (isUnmounted) return
   try {
+    // let data: any = {}
+
     const data = await getLineInfoData(route.query.lineId as string)
 
     const dataFirstTemp: [number, number][] = []
 
+    data.vacuumLeakTesting.leak1.forEach((item: number, index: number) => {
+      if (item > 0.1) {
+        dataFirstTemp.push([index, item / 100])
+      } else {
+        dataFirstTemp.push([index, item])
+      }
+    })
+
     const dataSecondTemp: [number, number][] = []
-
-    if (data.vacuumLeakTesting.vacuum1) {
-      data.vacuumLeakTesting.vacuum1.forEach((item: number, index: number) => {
-        if (item > 0.1) {
-          dataFirstTemp.push([index, item / 100])
-        } else {
-          dataFirstTemp.push([index, item])
-        }
-      })
-
-      // console.log(dataFirst[dataFirst.length - 1][1])
-      if (dataFirstTemp.length) vacuumOneValue.value = dataFirstTemp[dataFirstTemp.length - 1][1]
-    }
-
-    if (data.vacuumLeakTesting.vacuum2) {
-      data.vacuumLeakTesting.vacuum2.forEach((item: number, index: number) => {
-        if (item > 0.1) {
-          dataSecondTemp.push([index, item / 100])
-        } else {
-          dataSecondTemp.push([index, item])
-        }
-      })
-
-      // console.log(dataSecond);
-      if (dataSecondTemp.length) vacuumTwoValue.value = dataSecondTemp[dataSecondTemp.length - 1][1]
-    }
+    data.vacuumLeakTesting.leak2.forEach((item: number, index: number) => {
+      if (item > 0.1) {
+        dataSecondTemp.push([index, item / 100])
+      } else {
+        dataSecondTemp.push([index, item])
+      }
+    })
 
     anime({
       targets: achivement,
       ...data.achivement,
       ...data.state,
       ...data.equipments.Press.Vibration,
-      vacuum2: dataSecond.length ? dataSecond[dataSecond.length - 1][1] : 0,
-      vacuum1: dataFirst.length ? dataFirst[dataFirst.length - 1][1] : 0,
+      vacuum2: data.vacuumLeakTesting.vacuum2,
+      vacuum1: data.vacuumLeakTesting.vacuum1,
       nitrogenFillingFirst: data.equipments.nitrogenFilling.first.pressure,
       nitrogenFillingSecond: data.equipments.nitrogenFilling.second.pressure,
       airPurgePressure: data.equipments.airPurge.Pressure,
@@ -325,7 +316,8 @@ async function getData() {
 
     // bearingOneValue.value = data.equipments.Press.Vibration.bearing1;
   } catch (error) {
-    error
+    // error
+    console.error(error)
   }
 
   window.setTimeout(() => {

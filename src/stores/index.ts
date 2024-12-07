@@ -143,6 +143,7 @@ export const useStore = defineStore('store', () => {
     const s = num % 60
     const m = Math.ceil(num / 60)
     const h = Math.ceil(num / (60 * 60))
+    const d = Math.ceil(num / (60 * 60 * 24))
     if (num < 60) {
       return `${s}秒`
     }
@@ -150,8 +151,10 @@ export const useStore = defineStore('store', () => {
     if (num < 60 * 60) {
       return `${m}分`
     }
-
-    return `${h}小时`
+    if (num < 60 * 60 * 24) {
+      return `${h}小时`
+    }
+    return `${d}天`
   }
 
   function computeDeviceId(label: string) {
@@ -184,7 +187,7 @@ export const useStore = defineStore('store', () => {
 
       if (device) {
         device.history = calcHistoryText(v[1])
-        device.value = v[0]
+        device.value = v[0] || 0
       }
     })
   }

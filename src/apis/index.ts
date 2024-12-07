@@ -3,6 +3,9 @@ import { message } from 'ant-design-vue'
 
 export const request = axios.create({
   baseURL: (window as any).customConfig,
+  headers: {
+    'Content-Type': 'application/json'
+  },
   timeout: 2 * 60 * 1000
 })
 
@@ -25,9 +28,22 @@ export const getHomeStatusData = async () => {
 }
 
 export const getDeviceData = async (lineId: string) => {
-  const res = await request.get<DeviceHistory>(`/line/${lineId}`)
+  const res = await request.get<{ data: DeviceHistory }>(`/admin_index`, {
+    params: {
+      line_name: lineId
+    }
+  })
 
-  return res.data
+  const data = res.data.data as any
+
+  return {
+    dryingOven: data.dryer_t,
+    fan1: data.fan1_xv,
+    fan2: data.fan2_xv,
+    bearing1: data.bear1,
+    bearing2: data.bear2,
+    ...data
+  }
 }
 
 export const getDeviceEchartsData = async (
@@ -56,7 +72,7 @@ export const getBearing1Data = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 export const getBearing2Data = async (params: {
@@ -68,7 +84,7 @@ export const getBearing2Data = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 export const getMotorData = async (params: {
@@ -80,7 +96,7 @@ export const getMotorData = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 // 获取风机的数据
@@ -93,7 +109,7 @@ export const getFlywheelData = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 // getWind1
@@ -106,7 +122,7 @@ export const getWind1Data = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 // getWind2
@@ -119,7 +135,7 @@ export const getWind2Data = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 // 获取真空度的数据
@@ -132,7 +148,7 @@ export const getLeakData = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 // 获取Expender的数据
@@ -144,7 +160,7 @@ export const getExpenderData = async (params: {
   const res = await request.get('/getExpender', {
     params
   })
-  return res.data
+  return res.data.data
 }
 
 // 获取干燥炉温度数据
@@ -157,7 +173,7 @@ export const getDryerData = async (params: {
     params
   })
 
-  return res.data
+  return res.data.data
 }
 
 // 获取产线监控大屏的数据信息

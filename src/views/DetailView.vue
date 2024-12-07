@@ -12,24 +12,26 @@ import { useRoute } from 'vue-router'
 import {
   getBearing1Data,
   getDeviceData,
-  getDeviceEchartsData,
+  getDryerData,
+  // getDeviceEchartsData,
   getExpenderData,
+  getHomeStatusData,
   getLeakData,
   getWind1Data,
   getWind2Data
 } from '@/apis'
-import axios from 'axios'
+// import axios from 'axios'
 import { getBearing2Data } from '@/apis'
 import { getMotorData } from '@/apis'
 import { getFlywheelData } from '@/apis'
 
 type RangeValue = [Dayjs, Dayjs]
-const newApi = (window as any).NEW_API ?? '/'
-const request = axios.create({
-  baseURL: newApi,
-  timeout: 10 * 1000
-})
-console.log(newApi)
+// const newApi = (window as any).NEW_API ?? '/'
+// const request = axios.create({
+//   baseURL: newApi,
+//   timeout: 10 * 1000
+// })
+// console.log(newApi)
 const store = useStore()
 const startDate = dayjs()
 const dateRange = ref<RangeValue>([startDate.subtract(7, 'day'), startDate])
@@ -750,14 +752,11 @@ async function loadEchartData() {
     }
     // 针对干燥炉温度的处理
     if (currentId.value === 'dryingOven') {
-      const res = await request.get(`${newApi}api/getDryer`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getDryerData({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
 
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
 
@@ -957,6 +956,9 @@ watch(
           xyzw.map((item) => item[3])
         )
       }
+    } else {
+      const time = data.map((item) => item.time)
+      draw(time, [], [], [])
     }
   }
 )
@@ -1015,7 +1017,15 @@ onMounted(async () => {
   isLoading.value = false
 
   try {
-    const res = await getDeviceData(store.currentDeviceId)
+    const res = await getDeviceData(lineName.value).finally(() => {
+      isLoading.value = false
+    })
+
+    const status = await getHomeStatusData()
+
+    store.changeDevices(status)
+
+    store.changeCurrentDeviceLabel(lineName.value)
 
     // isLoading.value = false
 
