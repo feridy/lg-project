@@ -9,8 +9,19 @@ import { Spin } from 'ant-design-vue'
 import type { Dayjs } from 'dayjs'
 // import { request } from '../apis/index'
 import { useRoute } from 'vue-router'
-import { getDeviceData, getDeviceEchartsData } from '@/apis'
+import {
+  getBearing1Data,
+  getDeviceData,
+  getDeviceEchartsData,
+  getExpenderData,
+  getLeakData,
+  getWind1Data,
+  getWind2Data
+} from '@/apis'
 import axios from 'axios'
+import { getBearing2Data } from '@/apis'
+import { getMotorData } from '@/apis'
+import { getFlywheelData } from '@/apis'
 
 type RangeValue = [Dayjs, Dayjs]
 const newApi = (window as any).NEW_API ?? '/'
@@ -18,7 +29,7 @@ const request = axios.create({
   baseURL: newApi,
   timeout: 10 * 1000
 })
-// console.log(newApi)
+console.log(newApi)
 const store = useStore()
 const startDate = dayjs()
 const dateRange = ref<RangeValue>([startDate.subtract(7, 'day'), startDate])
@@ -29,7 +40,7 @@ const route = useRoute()
 
 // console.log(route)
 
-const lineName = computed(() => route.params.line || 'HE-05')
+const lineName = computed(() => (route.query.lineId || 'HE-05') as string)
 
 const dayList = [
   {
@@ -541,15 +552,13 @@ async function loadEchartData() {
   try {
     // 针对真空度的处理
     if (currentId.value === 'leak') {
-      const res = await request.get(`${newApi}/api/getLeak`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getLeakData({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
 
-      const data = res.data
+      // const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
 
       const timeData = data.map((item: any) => {
@@ -644,15 +653,12 @@ async function loadEchartData() {
     }
     // 针对Expender （℃）的处理
     if (currentId.value === 'expender') {
-      const res = await request.get(`${newApi}api/getExpender`, {
-        params: {
-          line_name: lineName.value,
-          device_name: 'expender',
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getExpenderData({
+        line_name: lineName.value,
+        // device_name: 'expender',
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
 
       const timeData = data.map((item: any) => item.time)
@@ -814,85 +820,68 @@ async function loadEchartData() {
     }
     // bearing1
     if (currentId.value === 'bearing1') {
-      const res = await request.get(`${newApi}api/getBear1`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getBearing1Data({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
 
-      const data = res.data
+      // const data = res.data
 
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
 
       renderData.value = data
       return
     }
-    // bearing1
+    // bearing2
     if (currentId.value === 'bearing2') {
-      const res = await request.get(`${newApi}api/getBear2`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getBearing2Data({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
       renderData.value = data
       return
     }
     // motor
     if (currentId.value === 'motor') {
-      const res = await request.get(`${newApi}api/getMotor`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getMotorData({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
       renderData.value = data
       return
     }
     // flywheel
     if (currentId.value === 'flywheel') {
-      const res = await request.get(`${newApi}api/getFly`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getFlywheelData({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
       renderData.value = data
       return
     }
     if (currentId.value === 'fan1') {
-      const res = await request.get(`${newApi}api/getWind1`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getWind1Data({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
       renderData.value = data
       return
     }
     if (currentId.value === 'fan2') {
-      const res = await request.get(`${newApi}api/getWind2`, {
-        params: {
-          line_name: lineName.value,
-          start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
-          end_date: dateRange.value?.[1].format('YYYY-MM-DD')
-        }
+      const data = await getWind2Data({
+        line_name: lineName.value,
+        start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
+        end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-      const data = res.data
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
       renderData.value = data
       return
@@ -922,25 +911,35 @@ watch(
       const xyzw: [number, number, number, number][] = data.map((item: any) => {
         if (featureId === 1) {
           return [
-            Number(item.acceleration_x),
-            Number(item.acceleration_y),
-            Number(item.acceleration_z),
+            Number(item.acceleration_x === 'NC' ? 0 : item.acceleration_x || 0),
+            Number(item.acceleration_y === 'NC' ? 0 : item.acceleration_y || 0),
+            Number(item.acceleration_z === 'NC' ? 0 : item.acceleration_z || 0),
             0
           ]
         }
         if (featureId === 2) {
-          return [Number(item.speed_x), Number(item.speed_y), Number(item.speed_z), 0]
+          return [
+            Number(item.speed_x === 'NC' || !item.speed_x ? 0 : item.speed_x),
+            Number(item.speed_y === 'NC' || !item.speed_y ? 0 : item.speed_y),
+            Number(item.speed_z === 'NC' || !item.speed_z ? 0 : item.speed_z),
+            0
+          ]
         }
         if (featureId === 3) {
           return [
-            Number(item.displacement_x),
-            Number(item.displacement_y),
-            Number(item.displacement_z),
+            Number(item.displacement_x === 'NC' || !item.displacement_x ? 0 : item.displacement_x),
+            Number(item.displacement_y === 'NC' || !item.displacement_y ? 0 : item.displacement_y),
+            Number(item.displacement_z === 'NC' || !item.displacement_z ? 0 : item.displacement_z),
             0
           ]
         }
         if (featureId === 4) {
-          return [0, 0, 0, Number(item.temperature)]
+          return [
+            0,
+            0,
+            0,
+            Number(item.temperature === 'NC' || !item.temperature ? 0 : item.temperature)
+          ]
         }
 
         return [0, 0, 0, 0]

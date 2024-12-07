@@ -33,10 +33,11 @@ const waringNum = computed(() => {
 })
 
 function onDeviceClick(id: string) {
+  console.log(id)
   router.push({
     path: '/momps',
     query: {
-      deviceId: id
+      lineId: id
     }
   })
 
@@ -45,7 +46,9 @@ function onDeviceClick(id: string) {
 
 onMounted(async () => {
   isLoading.value = true
-  const res = await getHomeStatusData()
+  const res = await getHomeStatusData().finally(() => {
+    isLoading.value = false
+  })
 
   store.changeDevices(res)
 

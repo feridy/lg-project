@@ -21,9 +21,9 @@ function goScreen() {
 }
 
 function goDetail() {
-  const lineName = route.query.deviceId
+  // const lineName = route.query.deviceId
   router.push({
-    path: `/detail/${lineName}`,
+    path: `/detail`,
     query: {
       ...route.query
     }
@@ -31,7 +31,8 @@ function goDetail() {
 }
 
 onMounted(() => {
-  if (!route.query.deviceId || !store.devices.some((item) => item.id === route.query.deviceId)) {
+  console.log(route.query)
+  if (!route.query.lineId) {
     router.replace('/')
   }
 })

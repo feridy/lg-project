@@ -3,9 +3,14 @@
 import { ref, onMounted, onUnmounted, computed, reactive } from 'vue'
 import * as echarts from 'echarts'
 import anime from 'animejs'
-import axios from 'axios'
+// import axios from 'axios'
+import { useRoute } from 'vue-router'
+import { Modal } from 'ant-design-vue'
+import { getLineInfoData } from '@/apis'
 
 const sevenRef = ref<HTMLDivElement>()
+
+const route = useRoute()
 
 let sevenEcharts: echarts.ECharts | null = null
 // const twoEcharts: echarts.ECharts | null = null
@@ -183,18 +188,7 @@ let isUnmounted = false
 async function getData() {
   if (isUnmounted) return
   try {
-    const res = await axios.get((window as any).customConfig ?? '/', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (res.status !== 200) {
-      throw new Error('请求失败')
-    }
-
-    const data = res.data
+    const data = await getLineInfoData(route.query.lineId as string)
 
     const dataFirstTemp: [number, number][] = []
 
@@ -625,7 +619,7 @@ onUnmounted(() => {
           <span>Electronics</span>
         </div>
       </div>
-      <div class="title-wrapper">HE-05 设备运行诊断 控制中心</div>
+      <div class="title-wrapper">{{ route.query.lineId }} 设备运行诊断 控制中心</div>
       <div class="right-wrapper">
         <div class="date-wrapper">
           <div class="day-wrapper">

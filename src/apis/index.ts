@@ -19,7 +19,7 @@ request.interceptors.response.use(
 )
 
 export const getHomeStatusData = async () => {
-  const res = await request.get<HomeStatusResponseData>('/status')
+  const res = await request.get<HomeStatusResponseData>('/line_status')
 
   return res.data
 }
@@ -47,57 +47,125 @@ export const getDeviceEchartsData = async (
   return res.data
 }
 
-export const getBearing1Data = async (
-  featureId: string,
-  params: {
-    start: number
-    end: number
-  }
-) => {
-  const res = await request.get(`/sensor/bearing1_${featureId}`, {
+export const getBearing1Data = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get(`/getBear1`, {
     params
   })
 
   return res.data
 }
 
-export const getBearing2Data = async (
-  featureId: string,
-  params: {
-    start: number
-    end: number
-  }
-) => {
-  const res = await request.get(`/sensor/bearing2_${featureId}`, {
+export const getBearing2Data = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get(`/getBear2`, {
     params
   })
 
   return res.data
 }
 
-export const getMotorData = async (
-  featureId: string,
-  params: {
-    start: number
-    end: number
-  }
-) => {
-  const res = await request.get(`/sensor/motor_${featureId}`, {
+export const getMotorData = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getMotor', {
     params
   })
 
   return res.data
 }
 
-export const getFlywheelData = async (
-  featureId: string,
-  params: {
-    start: number
-    end: number
-  }
-) => {
-  const res = await request.get(`/sensor/flywheel_${featureId}`, {
+// 获取风机的数据
+export const getFlywheelData = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getFly', {
     params
+  })
+
+  return res.data
+}
+
+// getWind1
+export const getWind1Data = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getWind1', {
+    params
+  })
+
+  return res.data
+}
+
+// getWind2
+export const getWind2Data = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getWind2', {
+    params
+  })
+
+  return res.data
+}
+
+// 获取真空度的数据
+export const getLeakData = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getLeak', {
+    params
+  })
+
+  return res.data
+}
+
+// 获取Expender的数据
+export const getExpenderData = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getExpender', {
+    params
+  })
+  return res.data
+}
+
+// 获取干燥炉温度数据
+export const getDryerData = async (params: {
+  start_date: string
+  end_date: string
+  line_name: string
+}) => {
+  const res = await request.get('/getDryer', {
+    params
+  })
+
+  return res.data
+}
+
+// 获取产线监控大屏的数据信息
+export const getLineInfoData = async (lineName: string) => {
+  const res = await request.get('/line_info', {
+    params: {
+      line_name: lineName
+    }
   })
 
   return res.data
