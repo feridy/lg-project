@@ -178,6 +178,96 @@ export const getDryerData = async (params: {
 
 // 获取产线监控大屏的数据信息
 export const getLineInfoData = async (lineName: string) => {
+  if (import.meta.env.DEV) {
+    return {
+      achivement: {
+        UPH: 0,
+        UPHRate: 0,
+        UPHTarget: 0,
+        now: 0,
+        plan: 0,
+        rate: 0
+      },
+      equipments: {
+        Press: {
+          Vibration: {
+            bearing1: 24.79,
+            bearing2: 0,
+            flyWheel: 4.7,
+            motor: 2.22
+          },
+          state: 'running'
+        },
+        airPurge: {
+          Pressure: 0.513,
+          state: 'running'
+        },
+        autoWelding: {
+          circulatingWater: {
+            highLimit: 70,
+            lowLimit: 50,
+            temperature: 33.2
+          },
+          state: 'running'
+        },
+        dryingOven: {
+          Temperature: 0.0,
+          Vibration: {
+            fan1: 0.0,
+            fan2: 0.0
+          },
+          state: 'running'
+        },
+        firstFlarePipe: {
+          oil: {
+            highLimit: 60,
+            lowLimit: 30.6,
+            temperature: 0
+          },
+          pump: {
+            Vibration: 0
+          },
+          state: 'running'
+        },
+        nitrogenFilling: {
+          first: {
+            pressure: 0.417,
+            state: 'running'
+          },
+          second: {
+            pressure: 0.105,
+            state: 'running'
+          }
+        },
+        secondFlarePipe: {
+          oil: {
+            highLimit: 60,
+            lowLimit: 30.6,
+            temperature: 0
+          },
+          pump: {
+            Vibration: 0
+          },
+          state: 'running'
+        }
+      },
+      plc_expander1: 1.0,
+      plc_expander2: 2.0,
+      plc_expander_diff: 2.0,
+      plc_expander_stand: 3.0,
+      state: {
+        'T/T': 0,
+        operationRate: 0
+      },
+      vacuumLeakTesting: {
+        leak1: [],
+        leak2: [],
+        state: 'running',
+        vacuum1: 0.001,
+        vacuum2: 0.002
+      }
+    }
+  }
   const res = await request.get('/line_info', {
     params: {
       line_name: lineName

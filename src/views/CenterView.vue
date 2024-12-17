@@ -51,6 +51,10 @@ const fourKongQiChuiXiValue = ref(0)
 const fiveKuoGuangValue = ref(0)
 const sixChongDanOneValue = ref(0)
 const sixChongDanTwoValue = ref(0)
+const plcExpander1 = ref(0)
+const plcExpander2 = ref(0)
+const plcExpanderDiff = ref(0)
+const plcExpanderStand = ref(0)
 
 //'running'|'warning'|'error'|'idle'
 const states = reactive({
@@ -89,12 +93,12 @@ const fiveValue = computed(() => {
 
   return (fiveKuoGuangValue.value / 10 - 1) * fivePre
 })
-const fourFengJiOneDeg = computed(() => {
-  return fourFengJiOneValue.value / pre - 6
-})
-const fourFengJiTwoDeg = computed(() => {
-  return fourFengJiTwoValue.value / pre - 6
-})
+// const fourFengJiOneDeg = computed(() => {
+//   return fourFengJiOneValue.value / pre - 6
+// })
+// const fourFengJiTwoDeg = computed(() => {
+//   return fourFengJiTwoValue.value / pre - 6
+// })
 const fourGanZhaoDeg = computed(() => {
   return fourGanZhaoValue.value - 60
 })
@@ -107,18 +111,18 @@ const sixChongDanOneDeg = computed(() => {
 const sixChongDanTwoDeg = computed(() => {
   return (sixChongDanTwoValue.value - 0.15) * (260 / 1)
 })
-const twoYouBingDianJiaDeg = computed(() => {
-  return twoYouBingDianJiaValue.value / pre - 6
-})
-const twoYouWenOneDeg = computed(() => {
-  return twoYouWenOneValue.value * (234 / 100)
-})
-const threeYouWenOneDeg = computed(() => {
-  return threeYouWenOneValue.value * (234 / 100)
-})
-const threeYouBingDianJiaDeg = computed(() => {
-  return threeYouBingDianJiaValue.value / pre - 6
-})
+// const twoYouBingDianJiaDeg = computed(() => {
+//   return twoYouBingDianJiaValue.value / pre - 6
+// })
+// const twoYouWenOneDeg = computed(() => {
+//   return twoYouWenOneValue.value * (234 / 100)
+// })
+// const threeYouWenOneDeg = computed(() => {
+//   return threeYouWenOneValue.value * (234 / 100)
+// })
+// const threeYouBingDianJiaDeg = computed(() => {
+//   return threeYouBingDianJiaValue.value / pre - 6
+// })
 
 const achivement = {
   UPH: 0,
@@ -145,7 +149,11 @@ const achivement = {
   dryingOvenVibrationFan2: 0,
   nitrogenFillingFirst: 0,
   nitrogenFillingSecond: 0,
-  autoWeldingCirculatingWaterTemperature: 0
+  autoWeldingCirculatingWaterTemperature: 0,
+  plcExpander1: 0,
+  plcExpander2: 0,
+  plcExpanderDiff: 0,
+  plcExpanderStand: 0
 }
 
 function getTradeNo() {
@@ -228,6 +236,10 @@ async function getData() {
       dryingOvenTemperature: data.equipments.dryingOven.Temperature,
       dryingOvenVibrationFan1: data.equipments.dryingOven.Vibration.fan1,
       dryingOvenVibrationFan2: data.equipments.dryingOven.Vibration.fan2,
+      plcExpander1: data.plc_expander1,
+      plcExpander2: data.plc_expander2,
+      plcExpanderDiff: data.plc_expander_diff,
+      plcExpanderStand: data.plc_expander_stand,
       autoWeldingCirculatingWaterTemperature:
         data.equipments.autoWelding.circulatingWater.temperature,
       round: 100,
@@ -259,6 +271,11 @@ async function getData() {
 
         vacuumOneValue.value = achivement.vacuum1
         vacuumTwoValue.value = achivement.vacuum2
+
+        plcExpander1.value = achivement.plcExpander1
+        plcExpander2.value = achivement.plcExpander2
+        plcExpanderDiff.value = achivement.plcExpanderDiff
+        plcExpanderStand.value = achivement.plcExpanderStand
       }
     })
 
@@ -848,8 +865,8 @@ onUnmounted(() => {
       <div class="main-wrapper">
         <div class="main-header">
           <div class="title-item">Press</div>
-          <div class="title-item">1次扩管</div>
-          <div class="title-item">2次扩管</div>
+          <div class="title-item">扩管机</div>
+          <!-- <div class="title-item">2次扩管</div> -->
           <div class="title-item">干燥炉</div>
           <div class="title-item">自动焊接</div>
           <div class="title-item">充氮</div>
@@ -884,88 +901,41 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="main-two">
-            <div class="main-title one">
-              <span>油温</span>
-              <span>单位：°C</span>
-            </div>
-            <div class="main-title">
-              <span>振动速度</span>
-              <span>单位：mm/s</span>
-            </div>
-            <!-- <div class="two-content" ref="twoRef"></div> -->
-            <div class="two-item one">
-              <div class="two-item-progress"></div>
-              <div
-                class="two-item-pointer"
-                :style="`transform: rotate(${twoYouWenOneDeg}deg);`"
-              ></div>
-              <div class="two-item-num" style="font-family: custom_font">
-                {{ twoYouWenOneValue }}°C
+            <div class="main-two-top">
+              <div class="main-two-top-left">
+                <div class="main-two-top-left-inner">
+                  <span class="main-two-top-left-inner-value show-num">{{ plcExpander1 }}</span>
+                </div>
+                <div class="main-two-top-left-title">1#丝杆编码器</div>
               </div>
-              <div class="two-item-bottom">
-                <span>上限: 60°C</span>
-                <span>运行: {{ twoYouWenOneValue }}°C</span>
+              <div class="main-two-top-right">
+                <div class="main-two-top-left-inner">
+                  <span class="main-two-top-left-inner-value show-num">{{ plcExpander2 }}</span>
+                </div>
+                <div class="main-two-top-left-title">2#丝杆编码器</div>
               </div>
             </div>
-            <div class="two-item two">
-              <div class="pointer" :style="`transform: rotate(${twoYouBingDianJiaDeg}deg)`"></div>
-              <div class="show-num">{{ twoYouBingDianJiaValue }}</div>
-              <div class="title-wrapper">油泵电机</div>
-            </div>
-          </div>
-          <div class="main-three">
-            <div class="main-title one">
-              <span>油温</span>
-              <span>单位：°C</span>
-            </div>
-            <div class="main-title">
-              <span>振动速度</span>
-              <span>单位：mm/s</span>
-            </div>
-            <div class="three-item one">
-              <div class="three-item-progress"></div>
-              <div
-                class="three-item-pointer"
-                :style="`transform: rotate(${threeYouWenOneDeg}deg);`"
-              ></div>
-              <div class="three-item-num" style="font-family: custom_font">
-                {{ threeYouWenOneValue }}°C
+            <div class="main-two-bottom">
+              <div class="main-two-bottom-left">
+                <div
+                  class="main-two-bottom-left-inner"
+                  :class="{ warning: plcExpanderDiff >= plcExpanderStand }"
+                >
+                  <div class="main-two-bottom-left-inner-value show-num">{{ plcExpanderDiff }}</div>
+                </div>
+                <div class="main-two-bottom-left-title">丝杆误差</div>
               </div>
-              <div class="three-item-bottom">
-                <span>上限: 60°C</span>
-                <span>运行: {{ threeYouWenOneValue }}°C</span>
+              <div class="main-two-bottom-right">
+                <div class="main-two-bottom-right-inner">
+                  <div class="main-two-bottom-left-inner-value show-num">
+                    {{ plcExpanderStand }}
+                  </div>
+                </div>
+                <div class="main-two-bottom-right-title">丝杆误差范围设置</div>
               </div>
-            </div>
-            <div class="three-item two">
-              <div class="pointer" :style="`transform: rotate(${threeYouBingDianJiaDeg}deg)`"></div>
-              <div class="show-num">{{ threeYouBingDianJiaValue }}</div>
-              <div class="title-wrapper">油泵电机</div>
             </div>
           </div>
           <div class="main-four">
-            <div class="main-title">
-              <span>振动速度</span>
-              <span>单位：mm/s</span>
-            </div>
-            <div class="four_item one">
-              <div class="pointer" :style="`transform: rotate(${fourFengJiOneDeg}deg)`"></div>
-              <div class="show-num">{{ fourFengJiOneValue }}</div>
-              <div class="title-wrapper">风机1#</div>
-            </div>
-            <div class="four_item two">
-              <div class="pointer" :style="`transform: rotate(${fourFengJiTwoDeg}deg)`"></div>
-              <div class="show-num">{{ fourFengJiTwoValue }}</div>
-              <div class="title-wrapper">风机2#</div>
-            </div>
-            <div class="four_item three">
-              <div class="four-title">
-                <span>温度</span>
-                <span>单位：°C</span>
-              </div>
-              <div class="pointer" :style="`transform: rotate(${fourGanZhaoDeg}deg)`"></div>
-              <div class="show-num">{{ fourGanZhaoValue }}°C</div>
-              <div class="title-wrapper">干燥炉温度</div>
-            </div>
             <div class="four_item four">
               <div class="four-title">
                 <span>压力</span>
@@ -977,6 +947,15 @@ onUnmounted(() => {
                 <!-- <span style="font-family: sans-serif">MPA</span> -->
               </div>
               <div class="title-wrapper">空气吹洗</div>
+            </div>
+            <div class="four_item three">
+              <div class="four-title">
+                <span>温度</span>
+                <span>单位：°C</span>
+              </div>
+              <div class="pointer" :style="`transform: rotate(${fourGanZhaoDeg}deg)`"></div>
+              <div class="show-num">{{ fourGanZhaoValue }}°C</div>
+              <div class="title-wrapper">干燥炉温度</div>
             </div>
           </div>
           <div class="main-five">
@@ -1523,15 +1502,19 @@ onUnmounted(() => {
         }
 
         &:nth-child(2) {
-          width: 183px;
+          width: 366px;
         }
 
-        &:nth-child(3) {
+        /* &:nth-child(3) {
           width: 183px;
+        } */
+
+        &:nth-child(3) {
+          width: 320px;
         }
 
         &:nth-child(4) {
-          width: 320px;
+          width: 202px;
         }
 
         &:nth-child(5) {
@@ -1539,10 +1522,6 @@ onUnmounted(() => {
         }
 
         &:nth-child(6) {
-          width: 202px;
-        }
-
-        &:nth-child(7) {
           width: 294px;
         }
       }
@@ -1616,12 +1595,66 @@ onUnmounted(() => {
         display: flex;
         flex-flow: column;
         align-items: center;
+        justify-content: center;
         position: relative;
-        width: 183px;
+        width: 366px;
         height: 429px;
         border: 1px solid #4c4c4a;
         border-radius: 8px;
-        padding-top: 60px;
+        padding-top: 50px;
+        .main-two-top,
+        .main-two-bottom {
+          display: flex;
+          width: 100%;
+          justify-content: center;
+          align-items: center;
+          &-left,
+          &-right {
+            &-inner {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 177px;
+              height: 129px;
+              background-image: url('../assets/images/new-explain-one.png');
+              background-size: cover;
+              background-position: center;
+              background-repeat: no-repeat;
+              &-value {
+                color: #fff;
+                margin-bottom: 2px;
+                line-height: 1;
+                font-size: 18px;
+                font-weight: 600;
+              }
+            }
+            &-title {
+              padding: 20px 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              text-align: center;
+              font-size: 15px;
+              color: #fff;
+            }
+          }
+        }
+
+        .main-two-bottom {
+          &-left {
+            &-inner {
+              background-image: url('../assets/images/new-explain-two.png');
+              &.warning {
+                background-image: url('../assets/images/new-explain-two-warning.png');
+              }
+            }
+          }
+          &-right {
+            &-inner {
+              background-image: url('../assets/images/new-explain-three.png');
+            }
+          }
+        }
 
         .main-title {
           position: absolute;
@@ -1913,14 +1946,18 @@ onUnmounted(() => {
 
       .main-four {
         display: flex;
-        flex-wrap: wrap;
+        flex-flow: column;
+        padding: 20px 0;
+        justify-content: space-around;
+        align-items: center;
+        flex-wrap: nowrap;
         position: relative;
         width: 320px;
         height: 429px;
         /* background-color: #000; */
         border: 1px solid #4c4c4a;
         border-radius: 8px;
-        padding-top: 60px;
+        padding-top: 10px;
 
         .main-title {
           position: absolute;
@@ -1959,7 +1996,7 @@ onUnmounted(() => {
             position: absolute;
             bottom: -10px;
             left: 50%;
-            transform: translate(-50%, 100%);
+            transform: translate(-50%, 100%) scale(0.8);
             color: #ffffff;
             font-size: 15px;
             font-weight: 600;
@@ -1987,29 +2024,25 @@ onUnmounted(() => {
             height: 132px;
             margin-left: 12px;
             margin-right: 12px;
+            transform: scale(1.2);
             background-image: url('../assets/images/four_1.png');
             background-size: 100% 100%;
             background-repeat: no-repeat;
             background-position: center;
-            margin-top: auto;
-            margin-bottom: 40px;
+            /* margin-top: auto;
+            margin-bottom: 40px; */
 
             .four-title {
               position: absolute;
-              top: -30px;
+              top: -10px;
               left: 50%;
+              width: 250px;
               display: flex;
               white-space: nowrap;
               justify-content: space-between;
               color: #fff;
               font-size: 16px;
-              transform: translateX(-50%);
-
-              > span {
-                &:last-child {
-                  margin-left: 20px;
-                }
-              }
+              transform: translateX(-50%) scale(0.8);
             }
 
             .title-wrapper {
@@ -2054,29 +2087,25 @@ onUnmounted(() => {
             position: relative;
             width: 137.3px;
             height: 124.3px;
+            transform: scale(1.2);
             background-image: url('../assets/images/four_2.png');
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
-            margin-top: auto;
-            margin-bottom: 40px;
+            /* margin-top: auto; */
+            /* margin-bottom: 40px; */
 
             .four-title {
               position: absolute;
-              top: -38px;
+              top: -20px;
               left: 50%;
               display: flex;
+              width: 240px;
               white-space: nowrap;
               justify-content: space-between;
               color: #fff;
               font-size: 16px;
-              transform: translateX(-50%);
-
-              > span {
-                &:last-child {
-                  margin-left: 20px;
-                }
-              }
+              transform: translateX(-50%) scale(0.8);
             }
 
             .title-wrapper {
