@@ -42,7 +42,7 @@ const route = useRoute()
 
 // console.log(route)
 
-const lineName = computed(() => (route.query.lineId || 'HE-05') as string)
+const lineName = computed(() => (route.query.lineId || route.params.line || 'HE-05') as string)
 
 const dayList = [
   {
@@ -978,7 +978,7 @@ watch(
   async ({ range, deviceId }) => {
     if (deviceId)
       if (range) {
-        await loadEchartData()
+        await loadEchartData().catch((err) => console.log(err))
         // await loadWaveChart()
       }
   }
@@ -1015,7 +1015,7 @@ function onMonitorDeviceClick(id: string) {
 
 onMounted(async () => {
   isLoading.value = false
-
+  console.log('2222')
   try {
     const res = await getDeviceData(lineName.value).finally(() => {
       isLoading.value = false
@@ -1088,7 +1088,11 @@ onUnmounted(() => {
         <div class="detail-content-header__device__two"></div>
         <div
           class="detail-content-header__device"
-          v-for="item in store.monitorDevices"
+          v-for="item in store.monitorDevices.filter((item) =>
+            store.currentDevice?.id === 'HE-05'
+              ? !['expender', 'fan1', 'fan2'].includes(item.id)
+              : true
+          )"
           :key="item.id"
           :class="`detail-content-header__device__${item.tag} ${item.id === currentId ? 'active' : ''}`"
           @click="onMonitorDeviceClick(item.id)"

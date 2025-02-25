@@ -1,8 +1,9 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import HomeView from '@/views/HomeView.vue'
 import CenterViewVue from '@/views/CenterView.vue'
 import MOMPSViewVue from '@/views/MOMPSView.vue'
 import DetailViewVue from '@/views/DetailView.vue'
+import OtherCenterView from '@/views/OtherCenterView.vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -18,8 +19,13 @@ const router = createRouter({
       component: CenterViewVue
     },
     {
-      path: '/momps',
-      name: 'momps',
+      path: '/other_center/:line?',
+      name: 'otherCenter',
+      component: OtherCenterView
+    },
+    {
+      path: '/status',
+      name: 'DeviceStatus',
       component: MOMPSViewVue
     },
     {

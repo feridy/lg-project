@@ -4,6 +4,7 @@ import vw from 'postcss-px-to-viewport'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import vueDevtools from 'vite-plugin-vue-devtools'
 // import dayjs from 'dayjs'
 // import { readFile } from 'node:fs/promises'
 // import path from 'node:path'
@@ -14,9 +15,11 @@ export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
+    vueDevtools(),
     viteMockServe({
       mockPath: 'mock',
-      enable: true
+      enable: true,
+      logger: true
     })
   ],
   base: './',
@@ -40,7 +43,7 @@ export default defineConfig({
     }
   },
   esbuild: {
-    drop: ['console', 'debugger']
+    // drop: ['console', 'debugger']
   },
   resolve: {
     alias: {
