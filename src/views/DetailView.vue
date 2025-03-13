@@ -127,14 +127,7 @@ function initChart() {
 
   echartInstance.setOption({
     color: ['#409EFF'],
-    // title: {
-    //   show: true,
-    //   text: '加速度 | 特征值',
-    //   textStyle: {
-    //     color: '#FFF',
-    //     fontSize: 14,
-    //   }
-    // },
+
     legend: {
       show: true,
       top: 0,
@@ -226,6 +219,7 @@ function initChart() {
     yAxis: {
       type: 'value',
       min: 0,
+
       boundaryGap: ['20%', '20%'],
       splitLine: {
         lineStyle: {
@@ -263,37 +257,6 @@ function initChart() {
       right: 0,
       containLabel: !0
     }
-    // series: [{
-    //   type: "line",
-    //   name: '加速度',
-    //   symbol: "none",
-    //   itemStyle: {
-    //     color: "#F56C6C"
-    //   },
-    //   xAxisIndex: 0,
-    //   lineStyle: {
-    //     width: 1,
-    //     color: "#409EFF"
-    //   },
-    //   label: {
-    //     show: false
-    //   },
-    //   markLine: {
-    //     symbol: "circle",
-    //     label: {
-    //       position: "end",
-    //       formatter: function (t: any) {
-    //         var e = t.name;
-    //         return "" !== e && t.dataIndex,
-    //           e
-    //       },
-    //       fontSize: 14,
-    //       fontFamily: "PingFangSC",
-    //       color: "#ffffff"
-    //     },
-    //     data: []
-    //   }
-    // }]
   })
 
   // window.echartInstance = echartInstance
@@ -488,9 +451,42 @@ function draw(time: string[], x: number[], y: number[], z: number[]) {
       data: z
     }
   ]
+
+  let max: number | null = null
+
+  switch (currentFeatureId.value) {
+    // 加速度
+    case 1:
+      max = (window as any).accMax || 30
+      break
+    case 2:
+      max = (window as any).seepMax || 80
+      break
+    case 3:
+      max = (window as any).disMax || 10
+      break
+    case 4:
+      max = (window as any).tempMax || 60
+      break
+    case 5:
+      max = (window as any).vacMax || 0.1
+      break
+    default:
+      break
+  }
+
+  if (currentFeatureId.value === 4 && currentId.value === 'dryingOven') {
+    max = (window as any).dryMax || 250
+  }
+
+  if (max) {
+    options.yAxis[0].max = max
+    options.yAxis[0].scale = true
+  }
+
   echartInstance.clear()
   echartInstance.setOption(options)
-
+  // console.log(options)
   echartInstance.dispatchAction({
     type: 'dataZoom',
     start: 0,
@@ -539,6 +535,34 @@ function drawTemperature(time: string[], val: number[]) {
       data: val
     }
   ]
+  let max: number | null = null
+  switch (currentFeatureId.value) {
+    // 加速度
+    case 1:
+      max = (window as any).accMax || 30
+      break
+    case 2:
+      max = (window as any).seepMax || 80
+      break
+    case 3:
+      max = (window as any).disMax || 10
+      break
+    case 4:
+      max = (window as any).tempMax || 60
+      break
+    case 5:
+      max = (window as any).vacMax || 0.1
+      break
+    default:
+      break
+  }
+  if (currentFeatureId.value === 4 && currentId.value === 'dryingOven') {
+    max = (window as any).dryMax || 250
+  }
+  if (max) {
+    options.yAxis[0].max = max
+    options.yAxis[0].scale = true
+  }
   echartInstance.clear()
   echartInstance.setOption(options)
 }
@@ -642,6 +666,11 @@ async function loadEchartData() {
           data: data.map((item: any) => Number(item.leak2))
         }
       ]
+      const max = (window as any).vacMax || 0.1
+      if (max) {
+        options.yAxis[0].max = max
+        options.yAxis[0].scale = true
+      }
       echartInstance.clear()
       echartInstance.setOption(options)
 
@@ -740,6 +769,11 @@ async function loadEchartData() {
           data: data.map((item: any) => Number(item.o_temperature1 || 0))
         }
       ]
+      const max = (window as any).tempMax || 60
+      if (max) {
+        options.yAxis[0].max = max
+        options.yAxis[0].scale = true
+      }
       echartInstance.clear()
       echartInstance.setOption(options)
 
@@ -807,6 +841,11 @@ async function loadEchartData() {
           data: data.map((item: any) => (Number.isNaN(Number(item.dry_t)) ? 0 : Number(item.dry_t)))
         }
       ]
+      const max = (window as any).dryMax || 250
+      if (max) {
+        options.yAxis[0].max = max
+        options.yAxis[0].scale = true
+      }
       echartInstance.clear()
       echartInstance.setOption(options)
 
@@ -824,7 +863,6 @@ async function loadEchartData() {
         start_date: dateRange.value?.[0].format('YYYY-MM-DD'),
         end_date: dateRange.value?.[1].format('YYYY-MM-DD')
       })
-
       // const data = res.data
 
       if (!Array.isArray(data)) throw new Error('返回的数据类型错误❌')
@@ -1089,7 +1127,8 @@ onUnmounted(() => {
         <div
           class="detail-content-header__device"
           v-for="item in store.monitorDevices.filter((item) =>
-            store.currentDevice?.id === 'HE-05'
+            store.currentDevice?.id === 'HE-05' ||
+            store.currentDevice?.id.toLocaleUpperCase() === 'HE05'
               ? !['expender', 'fan1', 'fan2'].includes(item.id)
               : true
           )"

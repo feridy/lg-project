@@ -32,7 +32,7 @@ function showDetailList() {
 }
 
 function goScreen(id: string) {
-  if (id === 'HE-05') {
+  if (id === 'HE-05' || id.toLocaleUpperCase() === 'HE05') {
     router.push({
       path: '/center',
       query: {
